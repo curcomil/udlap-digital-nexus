@@ -5,6 +5,13 @@ oai_bp = Blueprint("oai", __name__)
 
 @oai_bp.route("/", methods=["GET"])
 def oai_root():
+    return {
+        "message": "OAI root endpoint.",
+        "available_endpoints": ["/oai/colecciones_digitales", "/oai/tesis_digitales"]
+    }
+
+@oai_bp.route("/colecciones_digitales", methods =["GET"])
+def oai_colecciones():
     verb = request.args.get("verb")
 
     if not verb:
