@@ -14,5 +14,3 @@ def home ():
 for bp, prefix in blueprints:
     app.register_blueprint(bp, url_prefix=prefix)
 
-if __name__ == "__main__":
-    app.run(port=5000, debug=True)
