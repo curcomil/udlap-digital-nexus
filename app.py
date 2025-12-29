@@ -6,7 +6,7 @@ import os
 load_dotenv()
 app = Flask(__name__)
 
-@app.route("/api")
+@app.route("/api", strict_slashes=False)
 def home ():
     app.logger.info(f"Acceso a home")
     return {"mensaje": "q pedo api"}
