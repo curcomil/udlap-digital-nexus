@@ -6,10 +6,10 @@ import os
 load_dotenv()
 app = Flask(__name__)
 
-@app.route("/")
+@app.route("/api")
 def home ():
     app.logger.info(f"Acceso a home")
-    return {"mensaje": "Hola mundo"}
+    return {"mensaje": "q pedo api"}
 
 for bp, prefix in blueprints:
     app.register_blueprint(bp, url_prefix=prefix)

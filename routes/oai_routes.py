@@ -7,7 +7,7 @@ oai_bp = Blueprint("oai", __name__)
 def oai_root():
     return {
         "message": "OAI root endpoint.",
-        "available_endpoints": ["/oai/colecciones_digitales", "/oai/tesis_digitales"]
+        "available_endpoints": ["/colecciones_digitales", "/tesis_digitales"]
     }
 
 @oai_bp.route("/colecciones_digitales", methods =["GET"])
