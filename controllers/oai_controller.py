@@ -4,7 +4,7 @@ import os
 from utils import generate_json, jsonToOAI
 import json
 
-url = os.getenv("URL")
+url = os.getenv("URL") or "unknown"
 root_path = os.getenv("exist_database_path")
 
 
@@ -41,6 +41,7 @@ def identify():
 
     return Response(xml, content_type="text/xml; charset=utf-8")
 
+
 def list_metadata_formats():
     """Responde al verbo ListMetadataFormats."""
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -65,8 +66,9 @@ def list_metadata_formats():
 </OAI-PMH>"""
     return Response(xml, content_type="text/xml; charset=utf-8")
 
+
 def list_sets():
-    try: 
+    try:
         json_path = os.path.join(root_path, "estructura_exist.json")
 
         if not os.path.exists(json_path):
@@ -78,14 +80,15 @@ def list_sets():
             with open(json_path, "r", encoding="utf-8") as f:
                 estructura = json.load(f)
 
-        
         xml_str = jsonToOAI(estructura, url)
 
         return Response(xml_str, mimetype="text/xml; charset=utf-8")
 
     except FileNotFoundError:
         print("Error: No se encontró el archivo JSON ni la base de datos EXIST.")
-        return Response("<error>JSON no encontrado</error>", status=500, mimetype="text/xml")
+        return Response(
+            "<error>JSON no encontrado</error>", status=500, mimetype="text/xml"
+        )
 
     except json.JSONDecodeError as e:
         print(f"Error al decodificar el JSON: {e}")
@@ -94,4 +97,3 @@ def list_sets():
     except Exception as e:
         print(f"Error inesperado: {e}")
         return Response(f"<error>{e}</error>", status=500, mimetype="text/xml")
-
