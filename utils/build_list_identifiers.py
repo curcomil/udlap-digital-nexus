@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 import unicodedata
 import re
+from flask import current_app as app
 
 def normalizar_setspec(texto: str) -> str:
     texto = texto.lower()
@@ -50,6 +51,19 @@ def build_list_identifiers(
             # filtro por set (solo hojas)
             if set_filter and set_filter != set_spec:
                 continue
+
+            items = sub.get("items", [])
+
+            for idx, item in enumerate(items):
+                if not isinstance(item, dict):
+                    app.logger.warning(
+                        f"Item inválido en archivo={file}, "
+                        f"subcolección={sub.get('name')}, "
+                        f"index={idx}, "
+                        f"type={type(item)}, "
+                        f"value={item}"
+                    )
+                    continue
 
             for item in sub.get("items", []):
                 internal_id = item.get("internal_id")
