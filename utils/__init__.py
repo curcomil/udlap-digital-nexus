@@ -1,2 +1,4 @@
 from .generate_json_structure import generate_json
-from .json_to_OAI import jsonToOAI
+from .json_to_OAI import generar_listsets_oai as jsonToOAI
+from .build_list_identifiers import build_list_identifiers
+from .record_for_OAI import render_get_record_xml, render_list_records_xml

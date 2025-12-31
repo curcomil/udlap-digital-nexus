@@ -5,6 +5,7 @@ import os
 
 load_dotenv()
 app = Flask(__name__)
+ENVIROMENT = os.getenv("ENVIROMENT")
 
 @app.route("/api", strict_slashes=False)
 def home ():
@@ -15,4 +16,7 @@ API_PREFIX = "/api"
 
 for bp, prefix in blueprints:
     app.register_blueprint(bp, url_prefix=API_PREFIX + prefix)
+
+if __name__ == "__main__" and ENVIROMENT == "debug":
+    app.run(host="127.0.0.1", port=5000, debug=True)
 
