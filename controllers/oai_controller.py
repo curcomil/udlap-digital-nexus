@@ -303,9 +303,6 @@ def list_records(
     if not metadata_prefix:
         return oai_error("badArgument", "Missing metadataPrefix")
 
-    if not set_filter:
-        return oai_error("badArgument", "Missing set")
-
     repoIdentifier = (
         "coleccionesdigitales"
         if repositorio == "colecciones_digitales"
@@ -326,43 +323,88 @@ def list_records(
             # Comparar con set_filter
             collection_name = normalizar_setspec(collection_data.get("coleccion", file))
 
-            for sub in collection_data.get("subcolecciones", []):
-                sub_name = normalizar_setspec(sub.get("name"))
-                set_spec = f"{collection_name}:{sub_name}"
+            if set_filter:
+                for sub in collection_data.get("subcolecciones", []):
+                    sub_name = normalizar_setspec(sub.get("name"))
+                    set_spec = f"{collection_name}:{sub_name}"
 
-                if set_spec != set_filter:
-                    continue
-
-                # Filtro de fecha
-                for item in sub.get("items", []):
-                    internal_id = item.get("internal_id")
-                    mdate_raw = item.get("metadata", {}).get("mdate")
-
-                    if not internal_id or not mdate_raw:
+                    if set_spec != set_filter:
                         continue
 
-                    datestamp = parse_oai_date(mdate_raw)
-                    if not datestamp:
-                        continue
+                    # Filtro de fecha
+                    for item in sub.get("items", []):
+                        if not isinstance(item, dict):
+                            app.logger.warning(
+                                f"Item inválido en archivo={file}, "
+                                f"subcolección={sub.get('name')}, "
+                                f"type={type(item)}, "
+                                f"value={item}"
+                            )
+                            continue
+                        internal_id = item.get("internal_id")
+                        mdate_raw = item.get("metadata", {}).get("mdate")
 
-                    if date_from and datestamp < date_from:
-                        continue
-                    if date_until and datestamp > date_until:
-                        continue
+                        if not internal_id or not mdate_raw:
+                            continue
 
-                    # Agregar el registro a la lista
-                    matching_records.append(
-                        {
-                            "record": item,
-                            "setSpec": set_spec,
-                            "identifier": f"oai:{repoIdentifier}.udlap.mx:{internal_id}",
-                        }
-                    )
+                        datestamp = parse_oai_date(mdate_raw)
+                        if not datestamp:
+                            continue
 
-        # Si no hay registros, retornar error
-        if not matching_records:
-            return oai_error("noRecordsMatch", "No records found")
+                        if date_from and datestamp < date_from:
+                            continue
+                        if date_until and datestamp > date_until:
+                            continue
 
+                        # Agregar el registro a la lista
+                        matching_records.append(
+                            {
+                                "record": item,
+                                "setSpec": set_spec,
+                                "identifier": f"oai:{repoIdentifier}.udlap.mx:{internal_id}",
+                            }
+                        )
+                # Si no hay registros, retornar error
+                if not matching_records:
+                    return oai_error("noRecordsMatch", "No records found")
+            else:
+                # Sin filtro de set, revisar todas las subcolecciones
+                for sub in collection_data.get("subcolecciones", []):
+                    sub_name = normalizar_setspec(sub.get("name"))
+                    set_spec = f"{collection_name}:{sub_name}"
+
+                    for item in sub.get("items", []):
+                        if not isinstance(item, dict):
+                            app.logger.warning(
+                                f"Item inválido en archivo={file}, "
+                                f"subcolección={sub.get('name')}, "
+                                f"type={type(item)}, "
+                                f"value={item}"
+                            )
+                            continue
+                        internal_id = item.get("internal_id")
+                        mdate_raw = item.get("metadata", {}).get("mdate")
+
+                        if not internal_id or not mdate_raw:
+                            continue
+
+                        datestamp = parse_oai_date(mdate_raw)
+                        if not datestamp:
+                            continue
+
+                        if date_from and datestamp < date_from:
+                            continue
+                        if date_until and datestamp > date_until:
+                            continue
+
+                        # Agregar el registro a la lista
+                        matching_records.append(
+                            {
+                                "record": item,
+                                "setSpec": set_spec,
+                                "identifier": f"oai:{repoIdentifier}.udlap.mx:{internal_id}",
+                            }
+                        )
         # Generar el XML usando la función reutilizada
         xml = render_list_records_xml(
             records=matching_records,
