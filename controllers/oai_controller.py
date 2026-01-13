@@ -1,4 +1,4 @@
-import xml
+from pathlib import Path
 from flask import Response
 from datetime import datetime
 import os
@@ -15,8 +15,9 @@ import re
 import unicodedata
 
 URL = os.getenv("URL") or "unknown"
-ROOT_PATH = os.getenv("json_database_path")
-RECORDS_PATH = os.getenv("RECORDS_PATH")
+DEPLOY_BASE_PATH = Path(__file__).resolve().parent.parent
+ROOT_PATH = DEPLOY_BASE_PATH / "db" / "json"
+RECORDS_PATH = DEPLOY_BASE_PATH / "db" / "json" / "records"
 
 
 def oai_error(code: str, message: str) -> Response:
