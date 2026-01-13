@@ -324,6 +324,9 @@ def list_records(
             # Comparar con set_filter
             collection_name = normalizar_setspec(collection_data.get("coleccion", file))
 
+            app.logger.info(
+                f"Procesando colección={collection_name} con set_filter={set_filter}")
+
             if set_filter:
                 for sub in collection_data.get("subcolecciones", []):
                     sub_name = normalizar_setspec(sub.get("name"))

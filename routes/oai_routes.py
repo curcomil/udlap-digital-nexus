@@ -1,3 +1,4 @@
+from flask import current_app as app
 from flask import Blueprint, request
 from controllers import (
     identify,
@@ -53,7 +54,9 @@ def oai_colecciones():
         )
 
     elif verb == "GetRecord":
-
+        app.logger.info(
+            f"GetRecord called with identifier={identifier}, metadataPrefix={metadata_prefix}"
+        )
         return get_record(
             identifier,
             metadata_prefix,
@@ -61,6 +64,9 @@ def oai_colecciones():
         )
 
     elif verb == "ListRecords":
+        app.logger.info(
+            f"ListRecords called with metadataPrefix={metadata_prefix}, set={set_filter}, from={date_from}, until={date_until}"
+        )
         return list_records(
             metadata_prefix=metadata_prefix,
             set_filter=set_filter,
