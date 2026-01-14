@@ -2,10 +2,19 @@ from flask import Flask, request
 from routes import blueprints
 from dotenv import load_dotenv
 import os
+import logging
 
 load_dotenv()
 app = Flask(__name__)
 ENVIROMENT = os.getenv("ENVIROMENT") or "production"
+
+
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def log_request_info():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    app.logger.info(f">>> IP CLIENTE: {ip} | RUTA: {request.path} | MÉTODO: {request.method}")
 
 
 @app.route("/api", strict_slashes=False)
