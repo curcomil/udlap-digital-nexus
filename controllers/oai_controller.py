@@ -13,12 +13,14 @@ from flask import current_app as app
 import xml.etree.ElementTree as ET
 import re
 import unicodedata
+from db import MongoDBConnection_OAI
 
 URL = os.getenv("URL") or "unknown"
 DEPLOY_BASE_PATH = Path(__file__).resolve().parent.parent
 ROOT_PATH = DEPLOY_BASE_PATH / "db" / "json"
 RECORDS_PATH = DEPLOY_BASE_PATH / "db" / "json" / "records"
-
+repo_items = MongoDBConnection_OAI("items")
+repo_estructura = MongoDBConnection_OAI("estructura")
 
 def oai_error(code: str, message: str) -> Response:
 
@@ -104,21 +106,13 @@ def list_metadata_formats():
 def list_sets():
 
     try:
-        if not ROOT_PATH:
-            app.logger.error("json_database_path no está definido")
-            return oai_error(
-                "internalServerError", "Error interno, contacte al administrador"
-            )
+        data = repo_estructura.get_all()    
+        sets = []
 
-        json_path = os.path.join(ROOT_PATH, "estructura_sets.json")
+        for collection in data:
+            sets.append(collection)
 
-        if not os.path.isfile(json_path):
-            app.logger.error("estructura_sets.json no encontrado")
-            return oai_error(
-                "internalServerError", "Error interno, contacte al administrador"
-            )
-
-        xml_str = jsonToOAI(json_path, URL)
+        xml_str = jsonToOAI(sets, URL)
 
         return Response(xml_str, status=200, mimetype="text/xml; charset=utf-8")
 
@@ -168,8 +162,8 @@ def list_identifiers(
         response_date.text = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # request
-        request = ET.SubElement(root, "request", {"verb": "ListIdentifiers"})
-        request.text = ""
+        request = ET.SubElement(root, "request", {"verb": "ListIdentifiers", "metadataPrefix": "oai_dc"})
+        request.text = URL + f"/api/oai/{repositorio}"
 
         # ListIdentifiers
         list_identifiers = ET.SubElement(root, "ListIdentifiers")
@@ -188,12 +182,31 @@ def list_identifiers(
 
         return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
 
+    def setfilter(filtro: str):
+        prefijo, _, sufijo = filtro.partition(":")
+        
+        data = repo_estructura.set_filter(prefijo, sufijo if sufijo else None)
+        
+        res = []
+        if data:
+            nombre_col = data['coleccion']['name_collection']
+            res.append(nombre_col)
+            
+            if sufijo:
+                for sub in data.get('subcolecciones', []):
+                    if sub['setspec_subcollection'] == sufijo:
+                        res.append(sub['name_subcollection'])
+                        break 
+        
+        return res
+
+
     try:
         headers = build_list_identifiers(
-            data_path=RECORDS_PATH,
+            
             base_url=repoIdentifier + ".udlap.mx",
             metadata_prefix=metadata_prefix,
-            set_filter=set_filter,
+            set_filter=setfilter(set_filter) if set_filter else None,
             date_from=date_from,
             date_until=date_until,
         )

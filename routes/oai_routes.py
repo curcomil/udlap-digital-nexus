@@ -43,7 +43,7 @@ def oai_colecciones():
     elif verb == "ListSets":
         return list_sets()
 
-    elif verb == "ListIdentifiers":
+    elif verb == "ListIdentifiers": 
 
         return list_identifiers(
             metadata_prefix=metadata_prefix,
@@ -53,7 +53,7 @@ def oai_colecciones():
             repositorio="colecciones_digitales",
         )
 
-    elif verb == "GetRecord":
+    elif verb == "GetRecord": #Este es el que sigue
         app.logger.info(
             f"GetRecord called with identifier={identifier}, metadataPrefix={metadata_prefix}"
         )

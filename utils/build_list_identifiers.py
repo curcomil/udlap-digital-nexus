@@ -1,31 +1,37 @@
-import os
-import json
-from datetime import datetime
-import unicodedata
 import re
+import unicodedata
 from flask import current_app as app
+from db import MongoDBConnection_OAI
 
+repo_items = MongoDBConnection_OAI("items")
 
 def normalizar_setspec(texto: str) -> str:
+    if not texto:
+        return ""
+    
     texto = texto.lower()
-    texto = unicodedata.normalize("NFKD", texto)
-    texto = texto.encode("ascii", "ignore").decode("ascii")
+    texto = (
+        unicodedata.normalize("NFKD", texto)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
     texto = re.sub(r"[^a-z0-9]+", "_", texto)
     return texto.strip("_")
 
 
 def parse_oai_date(date_str: str) -> str | None:
     try:
+        if not date_str:
+            return None
         return date_str.split(" ")[0]
     except Exception:
         return None
 
 
 def build_list_identifiers(
-    data_path: str,
     base_url: str,
     metadata_prefix: str,
-    set_filter: str | None = None,
+    set_filter: list | None = None,
     date_from: str | None = None,
     date_until: str | None = None,
 ) -> list[dict]:
@@ -35,58 +41,48 @@ def build_list_identifiers(
 
     headers: list[dict] = []
 
-    for file in os.listdir(data_path):
-        if not file.endswith(".json"):
+    if set_filter:
+        col_id = set_filter[0]
+        sub_id = set_filter[1] if len(set_filter) > 1 else None
+        items = repo_items.find_items(col_id, sub_id)
+    else:
+        items = repo_items.get_all()
+
+    if not items:
+        return []
+
+    for item in items:
+        internal_id = item.get("internal_id")
+        mdate_raw = item.get("metadata", {}).get("mdate")
+        
+        col_raw = item.get("coleccion")
+        sub_raw = item.get("subcoleccion")
+
+
+        if not internal_id or not mdate_raw or not col_raw:
             continue
 
-        with open(os.path.join(data_path, file), "r", encoding="utf-8") as f:
-            collection_data = json.load(f)
+        datestamp = parse_oai_date(mdate_raw)
+        if not datestamp:
+            continue
 
-        collection_name = normalizar_setspec(collection_data.get("coleccion", file))
+        if date_from and datestamp < date_from:
+            continue
+        if date_until and datestamp > date_until:
+            continue
 
-        for sub in collection_data.get("subcolecciones", []):
-            sub_name = normalizar_setspec(sub.get("name"))
-            set_spec = f"{collection_name}:{sub_name}"
+  
+        col_norm = normalizar_setspec(col_raw)
+        sub_norm = normalizar_setspec(sub_raw)
 
-            # filtro por set (solo hojas)
-            if set_filter and set_filter != set_spec:
-                continue
+        setspec_final = f"{col_norm}:{sub_norm}" if sub_norm else col_norm
 
-            items = sub.get("items", [])
-            for idx, item in enumerate(items):
-                # Ignorar items que no sean diccionarios
-                if not isinstance(item, dict):
-                    app.logger.warning(
-                        f"Item inválido en archivo={file}, "
-                        f"subcolección={sub.get('name')}, "
-                        f"index={idx}, "
-                        f"type={type(item)}, "
-                        f"value={item}"
-                    )
-                    continue
-                
-                internal_id = item.get("internal_id")
-                mdate_raw = item.get("metadata", {}).get("mdate")
-
-                if not internal_id or not mdate_raw:
-                    continue
-
-                datestamp = parse_oai_date(mdate_raw)
-                if not datestamp:
-                    continue
-
-                # filtros de fecha
-                if date_from and datestamp < date_from:
-                    continue
-                if date_until and datestamp > date_until:
-                    continue
-
-                headers.append(
-                    {
-                        "identifier": f"oai:{base_url}:{internal_id}",
-                        "datestamp": datestamp,
-                        "setSpec": set_spec,
-                    }
-                )
+        headers.append(
+            {
+                "identifier": f"oai:{base_url}:{internal_id}",
+                "datestamp": datestamp,
+                "setSpec": setspec_final,
+            }
+        )
 
     return headers
