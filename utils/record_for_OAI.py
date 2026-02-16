@@ -178,8 +178,8 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
         if "tipo_de_objeto" in record["metadata"]:
             SubElement(dc, "dc:type").text = record["metadata"]["tipo_de_objeto"]
 
-        if "url_de_entrada" in record["metadata"]:
-            SubElement(dc, "dc:source").text = record["metadata"]["url_de_entrada"]
+        if "item_url" in record["metadata"]:
+            SubElement(dc, "dc:source").text = record["metadata"]["item_url"]
 
         if "idioma" in record["metadata"]:
             SubElement(dc, "dc:language").text = normalize_languages(
