@@ -8,6 +8,7 @@ from controllers import (
     get_record,
     list_records,
 )
+from db import MongoDBConnection_OAI
 
 oai_bp = Blueprint("oai", __name__)
 
@@ -74,5 +75,10 @@ def oai_colecciones():
             date_until=date_until,
             repositorio="colecciones_digitales",
         )
+    
+    elif verb == "test":    
+        db = MongoDBConnection_OAI("colecciones_digitales")
+        result = db.test_connection()
+        return result
 
     return {"error": f"Unsupported verb: {verb}"}, 400

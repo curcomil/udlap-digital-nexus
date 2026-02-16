@@ -1,3 +1,4 @@
+from http import client
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
@@ -16,6 +17,16 @@ class MongoDBConnection_OAI:
         )  # Comentar server_api si se usa MongoLocal
         self.db = self.client["OAI"]
         self.collection = self.db[collection_name]
+
+    def test_connection(self):
+        try:
+            self.client.admin.command('ping')
+            app.logger.info("Conexión a MongoDB exitosa")
+            return {"message": "Conexión a MongoDB exitosa"}
+        except Exception as e:
+            app.logger.error(f"Error al conectar a MongoDB: {e}")
+            return {"error": "No se pudo conectar a MongoDB", "details": str(e)}, 500
+
 
     def get_all(self):
         try:
