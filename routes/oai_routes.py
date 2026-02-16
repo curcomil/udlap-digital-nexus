@@ -54,10 +54,7 @@ def oai_colecciones():
             repositorio="colecciones_digitales",
         )
 
-    elif verb == "GetRecord": #Este es el que sigue
-        app.logger.info(
-            f"GetRecord called with identifier={identifier}, metadataPrefix={metadata_prefix}"
-        )
+    elif verb == "GetRecord": 
         return get_record(
             identifier,
             metadata_prefix,

@@ -1,4 +1,3 @@
-from http import client
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
@@ -59,4 +58,12 @@ class MongoDBConnection_OAI:
 
         except Exception as e:
             app.logger.error(f"Error al obtener datos: {e}")
-            return []  
+            return []
+        
+    def find_item (self, identifier):
+        try:
+            query = {"internal_id": identifier}
+            return self.collection.find_one(query, {"internal_id": 0})
+        except Exception as e:
+            app.logger.error(f"Error al obtener datos: {e}")
+            return None

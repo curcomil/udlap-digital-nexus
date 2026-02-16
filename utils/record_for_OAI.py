@@ -4,7 +4,7 @@ from datetime import datetime
 
 def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc", set_spec="und"):
     """
-    Genera el XML para GetRecord
+    Genera el XML para un item
     """
     root = create_oai_root()
     
@@ -159,6 +159,8 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
                 ),
             },
         )
+
+        #AQUI VA EL INDEX DE COLECCIONES
 
         # Etiquetas DC
         if "titulo" in record["metadata"]:
