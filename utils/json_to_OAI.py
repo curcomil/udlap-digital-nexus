@@ -1,28 +1,53 @@
 import json
+import unicodedata
+import re
 from datetime import datetime
 
-def jsonToOAI(json_data, base_url):
-    xml_sets = []
-    def recorrer(coleccion, prefix=""):
-       
-        set_spec = f"{prefix}:{coleccion['filename'].replace(' ', '_')}" if prefix else coleccion["filename"].replace(' ', '_')
+def normalizar_setspec(texto: str) -> str:
+    texto = texto.lower()
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    texto = re.sub(r"[^a-z0-9]+", "_", texto)
+    return texto.strip("_")
 
-        xml_sets.append(
-            f"<set><setSpec>{set_spec}</setSpec><setName>{coleccion['filename']}</setName></set>"
-        )
 
+def generar_listsets_oai(json: dict, base_url: str) -> str:
+    data = json
+
+    response_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    xml = []
+    xml.append('<?xml version="1.0" encoding="UTF-8"?>')
+    xml.append(
+        '<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/" '
+        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+        'xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/ '
+        'http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">'
+    )
+
+    xml.append(f"<responseDate>{response_date}</responseDate>")
+    xml.append(f'<request verb="ListSets">{base_url}</request>')
+    xml.append("<ListSets>")
+
+    for coleccion in data:
+        nombre_col = coleccion["coleccion"]["name_collection"]
+        col_spec = coleccion["coleccion"]["setspec_collection"]
+
+        # Set padre
+        xml.append("<set>")
+        xml.append(f"<setSpec>{col_spec}</setSpec>")
+        xml.append(f"<setName>{nombre_col}</setName>")
+        xml.append("</set>")
+
+        # Subcolecciones
         for sub in coleccion.get("subcolecciones", []):
-            recorrer(sub, set_spec)
+            sub_spec = sub["setspec_subcollection"]
+            xml.append("<set>")
+            xml.append(f"<setSpec>{col_spec}:{sub_spec}</setSpec>")
+            xml.append(f"<setName>{sub['name_subcollection']}</setName>")
+            xml.append("</set>")
 
-    recorrer(json_data)
+    xml.append("</ListSets>")
+    xml.append("</OAI-PMH>")
 
-    xml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
-<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
-  <responseDate>{datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}</responseDate>
-  <request verb="ListSets">{base_url}/oai</request>
-  <ListSets>
-    {"".join(xml_sets)}
-  </ListSets>
-</OAI-PMH>"""
+    return "\n".join(xml)
 
-    return xml_response
