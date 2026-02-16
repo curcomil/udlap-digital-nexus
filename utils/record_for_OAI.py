@@ -191,6 +191,9 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
                 "lugar_de_impresion"
             ]
 
+        if "portada_url" in record["metadata"]:
+            SubElement(dc, "dc:cover").text = record["metadata"]["portada_url"]
+
         SubElement(dc, "dc:identifier").text = identifier
 
         # Etiquetas DC default
