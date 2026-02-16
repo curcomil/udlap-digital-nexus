@@ -1,7 +1,6 @@
 from xml.etree.ElementTree import Element, SubElement, tostring
 from datetime import datetime
 
-
 def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc", set_spec="und"):
     """
     Genera el XML para un item
@@ -178,8 +177,6 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
         if "tipo_de_objeto" in record["metadata"]:
             SubElement(dc, "dc:type").text = record["metadata"]["tipo_de_objeto"]
 
-        if "item_url" in record["metadata"]:
-            SubElement(dc, "dc:source").text = record["metadata"]["item_url"]
 
         if "idioma" in record["metadata"]:
             SubElement(dc, "dc:language").text = normalize_languages(
@@ -191,8 +188,11 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
                 "lugar_de_impresion"
             ]
 
-        if "portada_url" in record["metadata"]:
-            SubElement(dc, "dc:cover").text = record["metadata"]["portada_url"]
+        if "item_url" in record:
+            SubElement(dc, "dc:source").text = record["item_url"]
+
+        if "portada_url" in record:
+            SubElement(dc, "dc:cover").text = record["portada_url"]
 
         SubElement(dc, "dc:identifier").text = identifier
 
