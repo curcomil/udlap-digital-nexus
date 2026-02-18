@@ -1,24 +1,27 @@
+from xml.etree.ElementTree import SubElement, register_namespace
 
-from xml.etree.ElementTree import  SubElement
+# Registrar el prefijo xsi para que ElementTree no lo redeclare en cada elemento hijo
+register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
+
 
 def normalize_languages(value):
-        LANG_MAP = [
-            "español",
-            "en español",
-            "castellano",
-            "espanol",
-            "en espanol",
-        ]
+    LANG_MAP = [
+        "español",
+        "en español",
+        "castellano",
+        "espanol",
+        "en espanol",
+    ]
 
-        if not value:
-            return ""
+    if not value:
+        return ""
 
-        value = value.lower()
+    value = value.lower()
 
-        if value in LANG_MAP:
-            return "spa"
-        else:
-            return "und"
+    if value in LANG_MAP:
+        return "spa"
+    else:
+        return "und"
 
 
 def index_4_collections(record: dict, dc: object, identifier: str):
@@ -37,24 +40,24 @@ def index_4_collections(record: dict, dc: object, identifier: str):
 
             if "tecnica" in metadata_interna:
                 SubElement(dc, "dc:format").text = metadata_interna["tecnica"]
-            
+
             if "medidas" in metadata_interna:
                 SubElement(dc, "dcterms:extent").text = metadata_interna["medidas"]
 
             if "numero" in metadata_interna:
                 elem = SubElement(dc, "dc:identifier")
                 elem.text = metadata_interna["numero"]
-                elem.set("{http://www.w3.org/2001/XMLSchema-instance}type", "dcterms:URI")
+                elem.set("xsi:type", "dcterms:URI")  # ← string plano, sin expansión
 
             if record.get("subcoleccion"):
                 elem = SubElement(dc, "dc:relation")
                 elem.text = record["subcoleccion"]
-                elem.set("{http://www.w3.org/2001/XMLSchema-instance}type", "dcterms:isPartOf")
+                elem.set("xsi:type", "dcterms:isPartOf")  # ← string plano, sin expansión
 
             if record.get("coleccion"):
                 elem = SubElement(dc, "dc:relation")
                 elem.text = record["coleccion"]
-                elem.set("{http://www.w3.org/2001/XMLSchema-instance}type", "dcterms:isPartOf")
+                elem.set("xsi:type", "dcterms:isPartOf")  # ← string plano, sin expansión
 
             if record.get("item_url"):
                 elem = SubElement(dc, "dc:source")
@@ -63,7 +66,7 @@ def index_4_collections(record: dict, dc: object, identifier: str):
             if record.get("portada_url"):
                 elem = SubElement(dc, "dc:source")
                 elem.text = record["portada_url"]
-                elem.set("{http://www.w3.org/2001/XMLSchema-instance}type", "dcterms:URI")
+                elem.set("xsi:type", "dcterms:URI")  # ← string plano, sin expansión
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "images"
@@ -74,8 +77,8 @@ def index_4_collections(record: dict, dc: object, identifier: str):
         #     pass
 
         case _:
-            # --- VALORES POR DEFAULT 
+            # --- VALORES POR DEFAULT
             if "titulo" in metadata_interna:
                 SubElement(dc, "dc:title").text = metadata_interna["titulo"]
-            
+
             SubElement(dc, "dc:identifier").text = identifier
