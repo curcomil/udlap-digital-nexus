@@ -39,7 +39,7 @@ def index_4_collections(record: dict, dc: object, identifier: str):
                 SubElement(dc, "dc:description").text = metadata_interna["descripcion"]
 
             if "tecnica" in metadata_interna:
-                SubElement(dc, "discovery:local4").text = metadata_interna["tecnica"]
+                SubElement(dc, "dc:format").text = metadata_interna["tecnica"]
 
             if "medidas" in metadata_interna:
                 SubElement(dc, "dcterms:extent").text = metadata_interna["medidas"]
