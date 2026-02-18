@@ -1,5 +1,6 @@
 from xml.etree.ElementTree import Element, SubElement, tostring
 from datetime import datetime
+from .index_for_collections import index_4_collections
 
 def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc", set_spec="und"):
     """
@@ -123,25 +124,7 @@ def create_record_header(record_el, identifier, record, set_spec):
 
 def create_record_metadata(record_el, record, identifier, metadata_prefix):
     """Crea el elemento metadata de un registro"""
-    def normalize_languages(value):
-        LANG_MAP = [
-            "español",
-            "en español",
-            "castellano",
-            "espanol",
-            "en espanol",
-        ]
-
-        if not value:
-            return ""
-
-        value = value.lower()
-
-        if value in LANG_MAP:
-            return "spa"
-        else:
-            return "und"
-
+    
     metadata = SubElement(record_el, "metadata")
 
     if metadata_prefix == "oai_dc":
@@ -152,6 +135,7 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
                 "xmlns:oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
                 "xmlns:dc": "http://purl.org/dc/elements/1.1/",
                 "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+                "xmlns:dcterms": "http://purl.org/dc/terms/",
                 "xsi:schemaLocation": (
                     "http://www.openarchives.org/OAI/2.0/oai_dc/ "
                     "http://www.openarchives.org/OAI/2.0/oai_dc.xsd"
@@ -161,41 +145,4 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
 
         #AQUI VA EL INDEX DE COLECCIONES
 
-        # Etiquetas DC
-        if "titulo" in record["metadata"]:
-            SubElement(dc, "dc:title").text = record["metadata"]["titulo"]
-
-        if "autor" in record["metadata"]:
-            SubElement(dc, "dc:creator").text = record["metadata"]["autor"]
-
-        if "descripcion" in record["metadata"]:
-            SubElement(dc, "dc:description").text = record["metadata"]["descripcion"]
-
-        if "fecha" in record["metadata"]:
-            SubElement(dc, "dc:date").text = record["metadata"]["fecha"]
-
-        if "tipo_de_objeto" in record["metadata"]:
-            SubElement(dc, "dc:type").text = record["metadata"]["tipo_de_objeto"]
-
-
-        if "idioma" in record["metadata"]:
-            SubElement(dc, "dc:language").text = normalize_languages(
-                record["metadata"]["idioma"]
-            )
-
-        if "lugar_de_impresion" in record["metadata"]:
-            SubElement(dc, "dc:publisher").text = record["metadata"][
-                "lugar_de_impresion"
-            ]
-
-        if "item_url" in record:
-            SubElement(dc, "dc:source").text = record["item_url"]
-
-        if "portada_url" in record:
-            SubElement(dc, "dc:cover").text = record["portada_url"]
-
-        SubElement(dc, "dc:identifier").text = identifier
-
-        # Etiquetas DC default
-        if "tipo_de_objeto" not in record["metadata"]:
-            SubElement(dc, "dc:type").text = "Libro"
+        index_4_collections(record, dc, identifier)
