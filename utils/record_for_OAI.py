@@ -2,7 +2,6 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from datetime import datetime
 from .index_for_collections import index_4_collections
 
-
 def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc", set_spec="und"):
     """
     Genera el XML para un item
