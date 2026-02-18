@@ -27,7 +27,6 @@ def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc"
     get_record = SubElement(root, "GetRecord")
     record_el = SubElement(get_record, "record")
 
-    # Crear el header y metadata usando funciones auxiliares
     create_record_header(record_el, identifier, record, set_spec)
     create_record_metadata(record_el, record, identifier, metadata_prefix)
 
@@ -36,7 +35,6 @@ def render_get_record_xml(record, base_url, identifier, metadata_prefix="oai_dc"
     
     return tostring(root, encoding="utf-8", xml_declaration=True)
 
-# ============================================
 
 def render_list_records_xml(records, base_url, metadata_prefix, set_filter=None, date_from=None, date_until=None):
     """
@@ -64,7 +62,6 @@ def render_list_records_xml(records, base_url, metadata_prefix, set_filter=None,
 
     list_records_el = SubElement(root, "ListRecords")
 
-    # Iterar sobre cada registro y crear su elemento
     for record_data in records:
         record_el = SubElement(list_records_el, "record")
         
@@ -118,14 +115,13 @@ def create_record_header(record_el, identifier, record, set_spec):
     )
     SubElement(header, "setSpec").text = set_spec
 
-    # Si el registro tiene setSpec adicionales
     for additional_set_spec in record.get("setSpec", []):
         SubElement(header, "setSpec").text = additional_set_spec
 
 
 def create_record_metadata(record_el, record, identifier, metadata_prefix):
     """Crea el elemento metadata de un registro"""
-    
+
     metadata = SubElement(record_el, "metadata")
 
     if metadata_prefix == "oai_dc":
@@ -135,7 +131,6 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
             {
                 "xmlns:oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
                 "xmlns:dc": "http://purl.org/dc/elements/1.1/",
-                "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
                 "xmlns:dcterms": "http://purl.org/dc/terms/",
                 "xsi:schemaLocation": (
                     "http://www.openarchives.org/OAI/2.0/oai_dc/ "
@@ -143,7 +138,5 @@ def create_record_metadata(record_el, record, identifier, metadata_prefix):
                 ),
             },
         )
-
-        #AQUI VA EL INDEX DE COLECCIONES
 
         index_4_collections(record, dc, identifier)
