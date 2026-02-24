@@ -25,11 +25,11 @@ def normalize_languages(value):
 
 
 def index_4_collections(record: dict, dc: object, identifier: str):
-    coleccion_nombre = record.get('coleccion')
-    metadata_interna = record.get('metadata', {})
+    coleccion_nombre = record.get("coleccion")
+    metadata_interna = record.get("metadata", {})
 
     match coleccion_nombre:
-        case 'Archivo Miguel Covarrubias':
+        case "Archivo Miguel Covarrubias":
             # --- Miguel Covarrubias ---
             if "titulo" in metadata_interna:
                 SubElement(dc, "dc:title").text = metadata_interna["titulo"]
@@ -45,19 +45,22 @@ def index_4_collections(record: dict, dc: object, identifier: str):
                 SubElement(dc, "dcterms:extent").text = metadata_interna["medidas"]
 
             if "numero" in metadata_interna:
-                elem = SubElement(dc, "dc:identifier")
+                elem = SubElement(dc, "dcterms:identifier")
                 elem.text = metadata_interna["numero"]
-                elem.set("xsi:type", "dcterms:URI")  # ← string plano, sin expansión
 
             if record.get("subcoleccion"):
-                elem = SubElement(dc, "dc:relation")
+                elem = SubElement(dc, "dc:isPartOf")
                 elem.text = record["subcoleccion"]
-                elem.set("xsi:type", "dcterms:isPartOf")  # ← string plano, sin expansión
+                elem.set(
+                    "xsi:type", "dcterms:isPartOf"
+                )  # ← string plano, sin expansión
 
             if record.get("coleccion"):
                 elem = SubElement(dc, "dc:relation")
                 elem.text = record["coleccion"]
-                elem.set("xsi:type", "dcterms:isPartOf")  # ← string plano, sin expansión
+                elem.set(
+                    "xsi:type", "dcterms:isPartOf"
+                )  # ← string plano, sin expansión
 
             if record.get("item_url"):
                 elem = SubElement(dc, "dc:source")
