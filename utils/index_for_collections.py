@@ -3,6 +3,8 @@ import re
 
 register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
 
+# Index de colecciones, se pueden agregar más casos conforme se vayan indexando más colecciones
+
 
 def add_if_value(parent, tag, value, xsi_type=None):
     if value:
