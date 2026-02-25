@@ -69,9 +69,17 @@ def index_4_collections(record, dc, identifier):
                 autor.strip() if autor and autor.strip() else "Sin autor"
             )
 
-            add_if_value(dc, "dc:description", md.get("descripcion_fisica_y_notas"))
-            add_if_value(dc, "dcterms:spatial", md.get("lugar"))
-            add_if_value(dc, "dc:date", md.get("fecha"))
+            add_if_value(
+                dc,
+                "dc:description",
+                md.get("descripcion_fisica_y_notas") or md.get("descripcion_fisica"),
+            )
+            add_if_value(
+                dc, "dcterms:spatial", md.get("lugar") or md.get("lugar_de_impresion")
+            )
+            add_if_value(
+                dc, "dc:date", md.get("fecha") or md.get("fecha_de_publicacion")
+            )
 
             for lang in normalize_languages(md.get("idioma")):
                 SubElement(dc, "dc:language").text = lang
@@ -82,6 +90,7 @@ def index_4_collections(record, dc, identifier):
             add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
             add_if_value(dc, "dc:source", record.get("item_url"))
             add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
+            add_if_value(dc, "dcterms:hasPart", md.get("marcas_de_propiedad"))
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "archival_material_manuscript"
