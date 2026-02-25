@@ -1,161 +1,91 @@
 from xml.etree.ElementTree import SubElement, register_namespace
 import re
 
-# Registrar el prefijo xsi para que ElementTree no lo redeclare en cada elemento hijo
 register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
 
 
+def add_if_value(parent, tag, value, xsi_type=None):
+    if value:
+        text = str(value).strip()
+        if text:
+            elem = SubElement(parent, tag)
+            elem.text = text
+            if xsi_type:
+                elem.set("xsi:type", xsi_type)
+
+
 def normalize_languages(value):
-    LANG_MAP_ESP = [
-        "español",
-        "en español",
-        "castellano",
-        "espanol",
-        "en espanol",
-    ]
-
-    LANG_MAP_LATIN = [
-        "latín",
-        "latin",
-        "en latín",
-        "en latin",
-    ]
-
-    LANG_MAP_NAHUATL = [
-        "náhuatl",
-        "nahuatl",
-        "en náhuatl",
-        "en nahuatl",
-    ]
-
     if not value:
         return []
 
-    # dividir por <br>, <br/> o <br />
-    idiomas = [i.strip().lower() for i in re.split(r"<br\s*/?>", value)]
+    LANG_MAP = {
+        "español": "spa",
+        "en español": "spa",
+        "castellano": "spa",
+        "espanol": "spa",
+        "latin": "lat",
+        "latín": "lat",
+        "nahuatl": "nah",
+        "náhuatl": "nah",
+    }
 
-    resultado = []
+    partes = [p.strip().lower() for p in re.split(r"<br\s*/?>", value) if p.strip()]
 
-    for idioma in idiomas:
-        if idioma in LANG_MAP_ESP:
-            resultado.append("spa")
-        elif idioma in LANG_MAP_LATIN:
-            resultado.append("lat")
-        elif idioma in LANG_MAP_NAHUATL:
-            resultado.append("nah")
-        else:
-            resultado.append("und")  # undefined
-
-    return list(set(resultado))
+    return list({LANG_MAP.get(p, "und") for p in partes})
 
 
-def index_4_collections(record: dict, dc: object, identifier: str):
-    coleccion_nombre = record.get("coleccion")
-    metadata_interna = record.get("metadata", {})
+def index_4_collections(record, dc, identifier):
+    coleccion = record.get("coleccion")
+    md = record.get("metadata", {})
 
-    match coleccion_nombre:
+    match coleccion:
+
         case "Archivo Miguel Covarrubias":
-            # --- Miguel Covarrubias ---
-            if "titulo" in metadata_interna:
-                SubElement(dc, "dc:title").text = metadata_interna["titulo"]
-            if "autor" in metadata_interna:
-                SubElement(dc, "dc:creator").text = metadata_interna["autor"]
-            if "descripcion" in metadata_interna:
-                SubElement(dc, "dc:description").text = metadata_interna["descripcion"]
 
-            if "tecnica" in metadata_interna:
-                SubElement(dc, "dc:format").text = metadata_interna["tecnica"]
+            add_if_value(dc, "dc:title", md.get("titulo"))
+            add_if_value(dc, "dc:creator", md.get("autor"))
+            add_if_value(dc, "dc:description", md.get("descripcion"))
+            add_if_value(dc, "dc:format", md.get("tecnica"))
+            add_if_value(dc, "dcterms:extent", md.get("medidas"))
+            add_if_value(dc, "dcterms:identifier", md.get("numero"))
 
-            if "medidas" in metadata_interna:
-                SubElement(dc, "dcterms:extent").text = metadata_interna["medidas"]
+            add_if_value(
+                dc, "dc:isPartOf", record.get("subcoleccion"), "dcterms:isPartOf"
+            )
 
-            if "numero" in metadata_interna:
-                elem = SubElement(dc, "dcterms:identifier")
-                elem.text = metadata_interna["numero"]
-
-            if record.get("subcoleccion"):
-                elem = SubElement(dc, "dc:isPartOf")
-                elem.text = record["subcoleccion"]
-                elem.set("xsi:type", "dcterms:isPartOf")
-
-            # Lo que siempre va -------------------------
-
-            if record.get("coleccion"):
-                elem = SubElement(dc, "dc:relation")
-                elem.text = record["coleccion"]
-                elem.set("xsi:type", "dcterms:isPartOf")
-
-            if record.get("item_url"):
-                elem = SubElement(dc, "dc:source")
-                elem.text = record["item_url"]
-
-            if record.get("portada_url"):
-                elem = SubElement(dc, "dc:source")
-                elem.text = record["portada_url"]
-                elem.set("xsi:type", "dcterms:URI")
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "images"
 
-        # case 'Nombre de la Nueva Coleccion':
-        #
-
         case "Archivo Histórico de la Provincia del Santo Evangelio de México":
-            # --- Archivo Histórico de la Provincia del Santo Evangelio de México ---
-            if "titulo" in metadata_interna:
-                SubElement(dc, "dc:title").text = metadata_interna["titulo"]
 
-            if "autor" in metadata_interna:
-                SubElement(dc, "dc:creator").text = metadata_interna["autor"]
-            else:
-                SubElement(dc, "dc:creator").text = "Sin autor"
+            add_if_value(dc, "dc:title", md.get("titulo"))
 
-            if "descripcion_fisica_y_notas" in metadata_interna:
-                SubElement(dc, "dc:description").text = metadata_interna[
-                    "descripcion_fisica_y_notas"
-                ]
+            autor = md.get("autor")
+            SubElement(dc, "dc:creator").text = (
+                autor.strip() if autor and autor.strip() else "Sin autor"
+            )
 
-            if "lugar" in metadata_interna:
-                SubElement(dc, "dcterms:spatial").text = metadata_interna["lugar"]
+            add_if_value(dc, "dc:description", md.get("descripcion_fisica_y_notas"))
+            add_if_value(dc, "dcterms:spatial", md.get("lugar"))
+            add_if_value(dc, "dc:date", md.get("fecha"))
 
-            if "fecha" in metadata_interna:
-                SubElement(dc, "dc:date").text = metadata_interna["fecha"]
+            for lang in normalize_languages(md.get("idioma")):
+                SubElement(dc, "dc:language").text = lang
 
-            if "idioma" in metadata_interna:
-                idiomas_normalizados = normalize_languages(metadata_interna["idioma"])
-                for idioma in idiomas_normalizados:
-                    SubElement(dc, "dc:language").text = idioma
+            add_if_value(dc, "dcterms:provenance", md.get("procedencia"))
+            add_if_value(dc, "dc:contributor", md.get("impresor"))
 
-            if "procedencia" in metadata_interna:
-                SubElement(dc, "dcterms:provenance").text = metadata_interna[
-                    "procedencia"
-                ]
-
-            if "impresor" in metadata_interna:
-                SubElement(dc, "dc:contributor").text = metadata_interna["impresor"]
-
-            # Lo que siempre va -------------------------
-
-            if record.get("coleccion"):
-                elem = SubElement(dc, "dc:relation")
-                elem.text = record["coleccion"]
-                elem.set("xsi:type", "dcterms:isPartOf")
-
-            if record.get("item_url"):
-                elem = SubElement(dc, "dc:source")
-                elem.text = record["item_url"]
-
-            if record.get("portada_url"):
-                elem = SubElement(dc, "dc:source")
-                elem.text = record["portada_url"]
-                elem.set("xsi:type", "dcterms:URI")
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "archival_material_manuscript"
 
         case _:
-            # --- VALORES POR DEFAULT
-            if "titulo" in metadata_interna:
-                SubElement(dc, "dc:title").text = metadata_interna["titulo"]
-
+            add_if_value(dc, "dc:title", md.get("titulo"))
             SubElement(dc, "dc:identifier").text = identifier
