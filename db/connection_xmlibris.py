@@ -1,0 +1,66 @@
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from pymongo import ReturnDocument
+from dotenv import load_dotenv
+import os
+from flask import current_app as app
+
+load_dotenv()
+uri = os.getenv("MONGODB_URI")
+
+
+class MongoDBConnection_XMLibris:
+
+    def __init__(self, collection_name):
+        self.client = MongoClient(
+            uri, server_api=ServerApi("1")
+        )  # Comentar server_api si se usa MongoLocal
+        self.db = self.client["xmlibris"]
+        self.collection = self.db[collection_name]
+
+    def get_all_carpetas(self):
+        try:
+            return list(self.collection.find({"type": "carpeta"}))
+        except Exception as e:
+            app.logger.error(f"Error al obtener datos: {e}")
+            return []
+
+    def get_carpeta_by_id(self, carpeta_id):
+        try:
+            return self.collection.find_one({"_id": carpeta_id})
+        except Exception as e:
+            app.logger.error(f"Error al obtener datos: {e}")
+            return None
+
+    def get_all_items(self):
+        try:
+            return list(self.collection.find({"type": "item"}))
+        except Exception as e:
+            app.logger.error(f"Error al obtener datos: {e}")
+            return []
+
+    def get_items_by_carpeta_id(self, carpeta_id):
+        try:
+            return list(self.collection.find({"type": "item", "father_id": carpeta_id}))
+        except Exception as e:
+            app.logger.error(f"Error al obtener datos: {e}")
+            return []
+
+    def update_carpeta(self, carpeta_id, data):
+        try:
+            updated_doc = self.collection.find_one_and_update(
+                {"_id": carpeta_id, "type": "carpeta"},
+                {"$set": data},
+                return_document=ReturnDocument.AFTER,
+            )
+            return updated_doc
+        except Exception as e:
+            app.logger.error(f"Error al actualizar carpeta: {e}")
+            return None
+
+    def get_carpeta_by_id(self, carpeta_id):
+        try:
+            return self.collection.find_one({"_id": carpeta_id, "type": "carpeta"})
+        except Exception as e:
+            app.logger.error(f"Error al obtener carpeta por ID: {e}")
+            return None
