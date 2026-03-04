@@ -90,7 +90,7 @@ def index_4_collections(record, dc, identifier):
         case "Biblioteca Franciscana":
             add_if_value(dc, "dc:title", md.get("titulo"))
             add_if_value(dc, "dc:creator", md.get("autor", "Sin autor"))
-            add_if_value(dc, "dc:publisher", md.get("pie_de_imprenta"))
+            add_if_value(dc, "dc:publisher", md.get("editor"))
             add_if_value(dc, "dc:date", md.get("fecha_de_publicacion"))
             for lang in normalize_languages(md.get("idioma")):
                 SubElement(dc, "dc:language").text = lang
@@ -108,7 +108,7 @@ def index_4_collections(record, dc, identifier):
             add_if_value(dc, "dc:source", record.get("item_url"))
             add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
             add_if_value(dc, "dcterms:hasPart", md.get("marcas_de_propiedad"))
-            add_if_value(dc, "dcterms:extent", md.get("editor"))
+            add_if_value(dc, "dcterms:extent", md.get("pie_de_imprenta"))
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "libros"
