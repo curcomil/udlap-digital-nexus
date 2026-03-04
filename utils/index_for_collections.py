@@ -1,4 +1,5 @@
 from xml.etree.ElementTree import SubElement, register_namespace
+from .lang_map import LANG_MAP
 import re
 
 register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
@@ -19,17 +20,6 @@ def add_if_value(parent, tag, value, xsi_type=None):
 def normalize_languages(value):
     if not value:
         return []
-
-    LANG_MAP = {
-        "español": "spa",
-        "en español": "spa",
-        "castellano": "spa",
-        "espanol": "spa",
-        "latin": "lat",
-        "latín": "lat",
-        "nahuatl": "nah",
-        "náhuatl": "nah",
-    }
 
     partes = [p.strip().lower() for p in re.split(r"<br\s*/?>", value) if p.strip()]
 
@@ -96,6 +86,32 @@ def index_4_collections(record, dc, identifier):
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "archival_material_manuscript"
+
+        case "Biblioteca Franciscana":
+            add_if_value(dc, "dc:title", md.get("titulo"))
+            add_if_value(dc, "dc:creator", md.get("autor", "Sin autor"))
+            add_if_value(dc, "dc:publisher", md.get("pie_de_imprenta"))
+            add_if_value(dc, "dc:date", md.get("fecha_de_publicacion"))
+            for lang in normalize_languages(md.get("idioma")):
+                SubElement(dc, "dc:language").text = lang
+            add_if_value(dc, "dc:description", md.get("descripcion_fisica"))
+            add_if_value(dc, "dcterms:provenance", md.get("procedencia"))
+            add_if_value(dc, "dcterms:identifier", md.get("clasificacion"))
+            add_if_value(
+                dc, "dcterms:spatial", md.get("lugar") or md.get("lugar_de_impresion")
+            )
+            add_if_value(dc, "dc:contributor", md.get("impresor"))
+
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:relation", md.get("marca_de_fuego_1"), "dcterms:URI")
+            add_if_value(dc, "dc:relation", md.get("marca_de_fuego_2"), "dcterms:URI")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
+            add_if_value(dc, "dcterms:hasPart", md.get("marcas_de_propiedad"))
+            add_if_value(dc, "dcterms:extent", md.get("editor"))
+
+            SubElement(dc, "dc:identifier").text = identifier
+            SubElement(dc, "dc:type").text = "libros"
 
         case _:
             add_if_value(dc, "dc:title", md.get("titulo"))
