@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from flask import current_app as app
 
+
 load_dotenv()
 uri = os.getenv("MONGODB_URI")
 
@@ -63,4 +64,37 @@ class MongoDBConnection_XMLibris:
             return self.collection.find_one({"_id": carpeta_id, "type": "carpeta"})
         except Exception as e:
             app.logger.error(f"Error al obtener carpeta por ID: {e}")
+            return None
+
+    def update_item(self, item_id, data):
+        try:
+            updated_doc = self.collection.find_one_and_update(
+                {"_id": item_id, "type": "item"},
+                {"$set": data},
+                return_document=ReturnDocument.AFTER,
+            )
+            return updated_doc
+        except Exception as e:
+            app.logger.error(f"Error al actualizar item: {e}")
+            return None
+
+    def search_by_filters(self, data):
+        try:
+
+            if data.get("filtro") == "keywords":
+                query = {
+                    "type": data.get("type"),
+                    "keywords": {
+                        "$elemMatch": {"$regex": data.get("query"), "$options": "i"}
+                    },
+                }
+            else:
+                query = {
+                    "type": data.get("type"),
+                    data.get("filtro"): {"$regex": data.get("query"), "$options": "i"},
+                }
+            print(query)
+            return list(self.collection.find(query))
+        except Exception as e:
+            app.logger.error(f"Error en la busqueda: {e}")
             return None

@@ -6,6 +6,8 @@ from controllers import (
     get_items_by_carpeta_id,
     actualizar_carpeta,
     get_carpeta_by_id,
+    actulizar_item,
+    search_by_filter,
 )
 
 xmlibris_bp = Blueprint("xmlibris", __name__)
@@ -55,3 +57,25 @@ def get_carpeta_by_id_route(carpeta_id):
         return {"error": "ID inválido"}, 400
 
     return get_carpeta_by_id(ObjectId(carpeta_id))
+
+
+@xmlibris_bp.route("/amc/item/<item_id>", methods=["PUT"])
+def update_item(item_id):
+    if not ObjectId.is_valid(item_id):
+        return {"error": "ID inválido"}, 400
+
+    data = request.get_json()
+    if not data:
+        return {"error": "Datos JSON no proporcionados"}, 400
+
+    return actulizar_item(ObjectId(item_id), data)
+
+
+@xmlibris_bp.route("/amc/findbyfilter", methods=["POST"])
+def FindbyFilter():
+
+    data = request.get_json()
+    if not data:
+        return {"error": "Filtros no proporcionados"}, 400
+
+    return search_by_filter(data)

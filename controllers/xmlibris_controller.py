@@ -2,6 +2,20 @@ from flask import Response
 from db import MongoDBConnection_XMLibris
 import json
 from bson import ObjectId
+import re
+import unicodedata
+
+
+def normalizar_setspec(texto: str) -> str:
+    if not texto:
+        return ""
+
+    texto = texto.lower()
+    texto = (
+        unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    )
+    texto = re.sub(r"[^a-z0-9]+", "_", texto)
+    return texto.strip("_")
 
 
 def get_all_carpetas():
@@ -45,6 +59,48 @@ def actualizar_carpeta(carpeta_id: ObjectId, data: dict):
     return Response(
         json.dumps(
             {"message": "Carpeta actualizada exitosamente", "carpeta": result},
+            default=str,
+        ),
+        mimetype="application/json",
+    )
+
+
+def actulizar_item(item_id: ObjectId, data: dict):
+    db = MongoDBConnection_XMLibris("amc")
+    result = db.update_item(ObjectId(item_id), data)
+    if not result:
+        return (
+            Response(
+                json.dumps({"message": "Item no encontrado o sin cambios"}),
+                mimetype="application/json",
+            ),
+            404,
+        )
+    return Response(
+        json.dumps(
+            {"message": "Item actualizado exitosamente", "item": result},
+            default=str,
+        ),
+        mimetype="application/json",
+    )
+
+
+def search_by_filter(data: dict):
+    db = MongoDBConnection_XMLibris("amc")
+    if data.get("filtro") == "nombre_expediente_normalizado":
+        data["query"] = normalizar_setspec(data.get("query"))
+    result = db.search_by_filters(data)
+    if not result:
+        return (
+            Response(
+                json.dumps({"message": "Sin coincidencias", "resultado": []}),
+                mimetype="application/json",
+            ),
+            404,
+        )
+    return Response(
+        json.dumps(
+            {"message": "Búsqueda exitosa", "resultado": result},
             default=str,
         ),
         mimetype="application/json",

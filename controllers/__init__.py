@@ -12,4 +12,6 @@ from .xmlibris_controller import (
     get_items_by_carpeta_id,
     actualizar_carpeta,
     get_carpeta_by_id,
+    actulizar_item,
+    search_by_filter,
 )
