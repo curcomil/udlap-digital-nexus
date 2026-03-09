@@ -79,22 +79,50 @@ class MongoDBConnection_XMLibris:
             return None
 
     def search_by_filters(self, data):
-        try:
+    try:
+        type_ = data.get("type")
+        filtro = data.get("filtro")
+        query_value = data.get("query")
 
-            if data.get("filtro") == "keywords":
-                query = {
-                    "type": data.get("type"),
-                    "keywords": {
-                        "$elemMatch": {"$regex": data.get("query"), "$options": "i"}
-                    },
+        if filtro == "keywords":
+            match_query = {
+                "type": type_,
+                "keywords": {
+                    "$elemMatch": {"$regex": query_value, "$options": "i"}
+                },
+            }
+        else:
+            match_query = {
+                "type": type_,
+                filtro: {"$regex": query_value, "$options": "i"},
+            }
+
+        pipeline = [
+            {"$match": match_query},
+            {
+                "$lookup": {
+                    "from": self.collection.name,
+                    "localField": "father_id",
+                    "foreignField": "_id",
+                    "as": "carpeta_padre",
                 }
-            else:
-                query = {
-                    "type": data.get("type"),
-                    data.get("filtro"): {"$regex": data.get("query"), "$options": "i"},
+            },
+            {
+                "$unwind": {
+                    "path": "$carpeta_padre",
+                    "preserveNullAndEmptyArrays": True
                 }
-            print(query)
-            return list(self.collection.find(query))
-        except Exception as e:
-            app.logger.error(f"Error en la busqueda: {e}")
-            return None
+            },
+        ]
+
+        result = list(self.collection.aggregate(pipeline))
+
+        for item in result:
+            if not item.get("carpeta_padre"):
+                item["carpeta_padre"] = "Sin carpeta asignada"
+
+        return result
+
+    except Exception as e:
+        app.logger.error(f"Error en la busqueda: {e}")
+        return None
