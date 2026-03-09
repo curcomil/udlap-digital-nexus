@@ -1,4 +1,5 @@
 from flask import current_app as app
+from flask_cors import CORS
 from flask import Blueprint, request
 from bson import ObjectId
 from controllers import (
@@ -11,14 +12,12 @@ from controllers import (
 )
 
 xmlibris_bp = Blueprint("xmlibris", __name__)
+CORS(xmlibris_bp, origins="*")
+
 
 @xmlibris_bp.route("/", methods=["GET"])
 def xmlibris_root():
-    return {"message": "xmlibris root endpoint",
-            "avalible_endpoints": [
-                "/amc"
-            ]
-            }
+    return {"message": "xmlibris root endpoint", "avalible_endpoints": ["/amc"]}
 
 
 @xmlibris_bp.route("/amc", methods=["GET"])
