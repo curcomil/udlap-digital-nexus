@@ -12,6 +12,14 @@ from controllers import (
 
 xmlibris_bp = Blueprint("xmlibris", __name__)
 
+@xmlibris_bp.route("/", methods=["GET"])
+def xmlibris_root():
+    return {"message": "xmlibris root endpoint",
+            "avalible_endpoints": [
+                "/amc"
+            ]
+            }
+
 
 @xmlibris_bp.route("/amc", methods=["GET"])
 def amc_root():

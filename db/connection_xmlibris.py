@@ -13,9 +13,8 @@ uri = os.getenv("MONGODB_URI")
 class MongoDBConnection_XMLibris:
 
     def __init__(self, collection_name):
-        self.client = MongoClient(
-            uri, server_api=ServerApi("1")
-        )  # Comentar server_api si se usa MongoLocal
+        # Comentar server_api si se usa MongoLocal
+        self.client = MongoClient(uri, server_api=ServerApi("1"))
         self.db = self.client["xmlibris"]
         self.collection = self.db[collection_name]
 
@@ -28,9 +27,9 @@ class MongoDBConnection_XMLibris:
 
     def get_carpeta_by_id(self, carpeta_id):
         try:
-            return self.collection.find_one({"_id": carpeta_id})
+            return self.collection.find_one({"_id": carpeta_id, "type": "carpeta"})
         except Exception as e:
-            app.logger.error(f"Error al obtener datos: {e}")
+            app.logger.error(f"Error al obtener carpeta por ID: {e}")
             return None
 
     def get_all_items(self):
@@ -59,13 +58,6 @@ class MongoDBConnection_XMLibris:
             app.logger.error(f"Error al actualizar carpeta: {e}")
             return None
 
-    def get_carpeta_by_id(self, carpeta_id):
-        try:
-            return self.collection.find_one({"_id": carpeta_id, "type": "carpeta"})
-        except Exception as e:
-            app.logger.error(f"Error al obtener carpeta por ID: {e}")
-            return None
-
     def update_item(self, item_id, data):
         try:
             updated_doc = self.collection.find_one_and_update(
@@ -79,50 +71,50 @@ class MongoDBConnection_XMLibris:
             return None
 
     def search_by_filters(self, data):
-    try:
-        type_ = data.get("type")
-        filtro = data.get("filtro")
-        query_value = data.get("query")
+        try:
+            type_ = data.get("type")
+            filtro = data.get("filtro")
+            query_value = data.get("query")
 
-        if filtro == "keywords":
-            match_query = {
-                "type": type_,
-                "keywords": {
-                    "$elemMatch": {"$regex": query_value, "$options": "i"}
+            if filtro == "keywords":
+                match_query = {
+                    "type": type_,
+                    "keywords": {
+                        "$elemMatch": {"$regex": query_value, "$options": "i"}
+                    },
+                }
+            else:
+                match_query = {
+                    "type": type_,
+                    filtro: {"$regex": query_value, "$options": "i"},
+                }
+
+            pipeline = [
+                {"$match": match_query},
+                {
+                    "$lookup": {
+                        "from": self.collection.name,
+                        "localField": "father_id",
+                        "foreignField": "_id",
+                        "as": "carpeta_padre",
+                    }
                 },
-            }
-        else:
-            match_query = {
-                "type": type_,
-                filtro: {"$regex": query_value, "$options": "i"},
-            }
+                {
+                    "$unwind": {
+                        "path": "$carpeta_padre",
+                        "preserveNullAndEmptyArrays": True,
+                    }
+                },
+            ]
 
-        pipeline = [
-            {"$match": match_query},
-            {
-                "$lookup": {
-                    "from": self.collection.name,
-                    "localField": "father_id",
-                    "foreignField": "_id",
-                    "as": "carpeta_padre",
-                }
-            },
-            {
-                "$unwind": {
-                    "path": "$carpeta_padre",
-                    "preserveNullAndEmptyArrays": True
-                }
-            },
-        ]
+            result = list(self.collection.aggregate(pipeline))
 
-        result = list(self.collection.aggregate(pipeline))
+            for item in result:
+                if not item.get("carpeta_padre"):
+                    item["carpeta_padre"] = "Sin carpeta asignada"
 
-        for item in result:
-            if not item.get("carpeta_padre"):
-                item["carpeta_padre"] = "Sin carpeta asignada"
+            return result
 
-        return result
-
-    except Exception as e:
-        app.logger.error(f"Error en la busqueda: {e}")
-        return None
+        except Exception as e:
+            app.logger.error(f"Error en la busqueda: {e}")
+            return None
