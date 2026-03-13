@@ -18,20 +18,20 @@ def normalizar_setspec(texto: str) -> str:
     return texto.strip("_")
 
 
-def get_all_carpetas():
-    db = MongoDBConnection_XMLibris("amc")
+def get_all_carpetas(coleccion: str):
+    db = MongoDBConnection_XMLibris(coleccion)
     carpetas = db.get_all_carpetas()
     return Response(json.dumps(carpetas, default=str), mimetype="application/json")
 
 
-def get_items_by_carpeta_id(carpeta_id: ObjectId):
-    db = MongoDBConnection_XMLibris("amc")
+def get_items_by_carpeta_id(coleccion: str, carpeta_id: ObjectId):
+    db = MongoDBConnection_XMLibris(coleccion)
     items = db.get_items_by_carpeta_id(carpeta_id)
     return Response(json.dumps(items, default=str), mimetype="application/json")
 
 
-def get_carpeta_by_id(carpeta_id: ObjectId):
-    db = MongoDBConnection_XMLibris("amc")
+def get_carpeta_by_id(coleccion: str, carpeta_id: ObjectId):
+    db = MongoDBConnection_XMLibris(coleccion)
     carpeta = db.get_carpeta_by_id(ObjectId(carpeta_id))
     if carpeta:
         return Response(json.dumps(carpeta, default=str), mimetype="application/json")
@@ -45,8 +45,8 @@ def get_carpeta_by_id(carpeta_id: ObjectId):
         )
 
 
-def actualizar_carpeta(carpeta_id: ObjectId, data: dict):
-    db = MongoDBConnection_XMLibris("amc")
+def actualizar_carpeta(coleccion: str, carpeta_id: ObjectId, data: dict):
+    db = MongoDBConnection_XMLibris(coleccion)
     result = db.update_carpeta(ObjectId(carpeta_id), data)
     if not result:
         return (
@@ -65,8 +65,8 @@ def actualizar_carpeta(carpeta_id: ObjectId, data: dict):
     )
 
 
-def actulizar_item(item_id: ObjectId, data: dict):
-    db = MongoDBConnection_XMLibris("amc")
+def actulizar_item(coleccion: str, item_id: ObjectId, data: dict):
+    db = MongoDBConnection_XMLibris(coleccion)
     result = db.update_item(ObjectId(item_id), data)
     if not result:
         return (
@@ -85,8 +85,8 @@ def actulizar_item(item_id: ObjectId, data: dict):
     )
 
 
-def search_by_filter(data: dict):
-    db = MongoDBConnection_XMLibris("amc")
+def search_by_filter(coleccion: str, data: dict):
+    db = MongoDBConnection_XMLibris(coleccion)
     if data.get("filtro") == "nombre_expediente_normalizado":
         data["query"] = normalizar_setspec(data.get("query"))
     result = db.search_by_filters(data)

@@ -15,3 +15,5 @@ from .xmlibris_controller import (
     actulizar_item,
     search_by_filter,
 )
+
+from .auth_controller import register, login

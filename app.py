@@ -1,12 +1,15 @@
 from flask import Flask, request
 from routes import blueprints
 from dotenv import load_dotenv
+from flask_jwt_extended import JWTManager
 import os
 import logging
 
 load_dotenv()
 app = Flask(__name__)
 ENVIROMENT = os.getenv("ENVIROMENT") or "production"
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+jwt = JWTManager(app)
 
 
 logging.basicConfig(level=logging.INFO)

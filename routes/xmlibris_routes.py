@@ -35,7 +35,7 @@ def amc_root():
 
 @xmlibris_bp.route("/amc/carpetas", methods=["GET"])
 def get_carpetas():
-    return get_all_carpetas()
+    return get_all_carpetas(coleccion="amc")
 
 
 @xmlibris_bp.route("/amc/items/<carpeta_id>", methods=["GET"])
@@ -43,7 +43,15 @@ def get_items_by_carpeta(carpeta_id):
     if not ObjectId.is_valid(carpeta_id):
         return {"error": "ID inválido"}, 400
 
-    return get_items_by_carpeta_id(ObjectId(carpeta_id))
+    return get_items_by_carpeta_id(coleccion="amc", carpeta_id=ObjectId(carpeta_id))
+
+
+@xmlibris_bp.route("/amc/carpeta/<carpeta_id>", methods=["GET"])
+def get_carpeta_by_id_route(carpeta_id):
+    if not ObjectId.is_valid(carpeta_id):
+        return {"error": "ID inválido"}, 400
+
+    return get_carpeta_by_id(coleccion="amc", carpeta_id=ObjectId(carpeta_id))
 
 
 @xmlibris_bp.route("/amc/carpeta/<carpeta_id>", methods=["PUT"])
@@ -55,15 +63,9 @@ def update_carpeta(carpeta_id):
     if not data:
         return {"error": "Datos JSON no proporcionados"}, 400
 
-    return actualizar_carpeta(ObjectId(carpeta_id), data)
-
-
-@xmlibris_bp.route("/amc/carpeta/<carpeta_id>", methods=["GET"])
-def get_carpeta_by_id_route(carpeta_id):
-    if not ObjectId.is_valid(carpeta_id):
-        return {"error": "ID inválido"}, 400
-
-    return get_carpeta_by_id(ObjectId(carpeta_id))
+    return actualizar_carpeta(
+        coleccion="amc", carpeta_id=ObjectId(carpeta_id), data=data
+    )
 
 
 @xmlibris_bp.route("/amc/item/<item_id>", methods=["PUT"])
@@ -75,7 +77,7 @@ def update_item(item_id):
     if not data:
         return {"error": "Datos JSON no proporcionados"}, 400
 
-    return actulizar_item(ObjectId(item_id), data)
+    return actulizar_item(coleccion="amc", item_id=ObjectId(item_id), data=data)
 
 
 @xmlibris_bp.route("/amc/findbyfilter", methods=["POST"])
@@ -85,4 +87,4 @@ def FindbyFilter():
     if not data:
         return {"error": "Filtros no proporcionados"}, 400
 
-    return search_by_filter(data)
+    return search_by_filter(coleccion="amc", data=data)
