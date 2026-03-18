@@ -2,6 +2,8 @@ from flask import Flask, request
 from routes import blueprints
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
+from middlewares import jwt_handlers_messages
+from datetime import timedelta
 import os
 import logging
 
@@ -9,7 +11,9 @@ load_dotenv()
 app = Flask(__name__)
 ENVIROMENT = os.getenv("ENVIROMENT") or "production"
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
 jwt = JWTManager(app)
+jwt_handlers_messages(jwt)
 
 
 logging.basicConfig(level=logging.INFO)

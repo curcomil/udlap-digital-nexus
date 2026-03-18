@@ -1,6 +1,5 @@
 from flask_cors import CORS
 from flask import Blueprint, request
-from bson import ObjectId
 from controllers import register, login
 
 auth_bp = Blueprint("auth", __name__)

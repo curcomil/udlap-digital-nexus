@@ -17,3 +17,5 @@ from .xmlibris_controller import (
 )
 
 from .auth_controller import register, login
+
+from .users_controller import getUsers

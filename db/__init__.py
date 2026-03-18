@@ -1,3 +1,4 @@
 from .connection_OAI import MongoDBConnection_OAI
 from .connection_xmlibris import MongoDBConnection_XMLibris
 from .connection_auth import MongoDBConnection_Auth
+from .connection_users import MongoDBConnection_Users
