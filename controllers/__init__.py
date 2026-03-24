@@ -18,4 +18,10 @@ from .xmlibris_controller import (
 
 from .auth_controller import register, login
 
-from .users_controller import getUsers
+from .users_controller import (
+    getUsers,
+    updateUser,
+    new_user,
+    delete_user_controller,
+    reset_credentials_controller,
+)
