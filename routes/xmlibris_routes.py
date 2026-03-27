@@ -2,6 +2,7 @@ from flask import current_app as app
 from flask_cors import CORS
 from flask import Blueprint, request
 from bson import ObjectId
+from middlewares import require_coordinator
 from controllers import (
     get_all_carpetas,
     get_items_by_carpeta_id,
@@ -9,6 +10,7 @@ from controllers import (
     get_carpeta_by_id,
     actulizar_item,
     search_by_filter,
+    new_collection_controller,
 )
 
 xmlibris_bp = Blueprint("xmlibris", __name__)
@@ -88,3 +90,20 @@ def FindbyFilter():
         return {"error": "Filtros no proporcionados"}, 400
 
     return search_by_filter(coleccion="amc", data=data)
+
+
+@xmlibris_bp.route("/newcollection", methods=["POST"])
+@require_coordinator
+def new_collection_route():
+    data = request.get_json()
+    if not data:
+        return {"success": False, "message": "Datos JSON no proporcionados"}, 400
+
+    submitted_user = data.pop("user", {})
+    new_collection_name = data.pop("new_collection_name", "general")
+
+    return new_collection_controller(
+        new_collection=new_collection_name,
+        submitted_user_data=submitted_user,
+        new_collection_data=data,
+    )

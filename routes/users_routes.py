@@ -1,12 +1,13 @@
 from flask_cors import CORS
 from flask import Blueprint, request
-from middlewares import require_admin
+from middlewares import require_admin, require_digitalizer
 from controllers import (
     getUsers,
     updateUser,
     new_user,
     delete_user_controller,
     reset_credentials_controller,
+    get_coordinators_controller,
 )
 from bson import ObjectId
 
@@ -70,3 +71,9 @@ def reset_credentials_route(user_id):
     return reset_credentials_controller(
         id_user=user_id, coleccion="users", db="xmlibris"
     )
+
+
+@users_bp.route("/getcoordinators", methods=["GET"])
+@require_digitalizer
+def get_coordinators_route():
+    return get_coordinators_controller(db="xmlibris", coleccion="users")

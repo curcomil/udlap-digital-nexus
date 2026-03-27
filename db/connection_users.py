@@ -139,3 +139,7 @@ class MongoDBConnection_Users:
                 "message": f"Error al reiniciar credenciales: {e}",
                 "status": 500,
             }
+
+    def get_coordinators(self):
+        result = list(self.collection.find({"role": "coordinator", "isActive": True}))
+        return result

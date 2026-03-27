@@ -108,6 +108,7 @@ class MongoDBConnection_Auth:
                 "username": user["username"],
                 "name": user["name"],
                 "role": user["role"],
+                "_id": user["_id"],
             },
             "status": 200,
         }

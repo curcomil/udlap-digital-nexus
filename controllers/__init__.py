@@ -14,6 +14,7 @@ from .xmlibris_controller import (
     get_carpeta_by_id,
     actulizar_item,
     search_by_filter,
+    new_collection_controller,
 )
 
 from .auth_controller import register, login
@@ -24,4 +25,5 @@ from .users_controller import (
     new_user,
     delete_user_controller,
     reset_credentials_controller,
+    get_coordinators_controller,
 )

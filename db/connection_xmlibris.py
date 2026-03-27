@@ -1,6 +1,7 @@
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo import ReturnDocument
+from pymongo.errors import WriteError
 from dotenv import load_dotenv
 import os
 from flask import current_app as app
@@ -118,3 +119,48 @@ class MongoDBConnection_XMLibris:
         except Exception as e:
             app.logger.error(f"Error en la busqueda: {e}")
             return None
+
+    def new_collection(self, data: dict):
+        try:
+            result = self.collection.insert_one(data)
+
+            if not result.inserted_id:
+                return {
+                    "success": False,
+                    "message": "No se pudo crear la colección",
+                    "status": 500,
+                }
+
+            return {
+                "success": True,
+                "message": "Colección creada correctamente",
+                "status": 201,
+            }
+
+        except WriteError as e:
+
+            missing = []
+            try:
+                rules = e.details["errInfo"]["details"]["schemaRulesNotSatisfied"]
+                for rule in rules:
+                    if rule.get("operatorName") == "required":
+                        missing = rule.get("missingProperties", [])
+            except (KeyError, TypeError):
+                pass
+
+            message = "Faltan campos requeridos"
+            if missing:
+                message = f"Faltan campos requeridos: {', '.join(missing)}"
+
+            return {
+                "success": False,
+                "message": message,
+                "status": 400,
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Error al crear la colección: {e}",
+                "status": 500,
+            }

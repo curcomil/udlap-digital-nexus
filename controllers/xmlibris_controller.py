@@ -1,9 +1,10 @@
-from flask import Response
+from flask import Response, jsonify
 from db import MongoDBConnection_XMLibris
 import json
 from bson import ObjectId
 import re
 import unicodedata
+from datetime import datetime, timezone
 
 
 def normalizar_setspec(texto: str) -> str:
@@ -105,3 +106,34 @@ def search_by_filter(coleccion: str, data: dict):
         ),
         mimetype="application/json",
     )
+
+
+def new_collection_controller(
+    new_collection: str, new_collection_data: dict, submitted_user_data: dict
+):
+    mongo = MongoDBConnection_XMLibris(new_collection)
+    new_collection_schema = {
+        "type": "collection",
+        "ref_collection": new_collection,
+        "payload": new_collection_data,
+        "status": "pending_coordinator",
+        "reviewedByCoordinator": {},
+        "coordinatorReviewedAt": "",
+        "chiefReviewedAt": "",
+        "rejectedTo": "",
+        "rejectedBy": "",
+        "rejectNote": "",
+        "history": [
+            {
+                "action": "create",
+                "by": submitted_user_data,
+                "date": datetime.now(timezone.utc),
+                "note": "",
+            }
+        ],
+    }
+    result = mongo.new_collection(data=new_collection_data)
+
+    status = result.pop("status", 500)
+
+    return jsonify(result), status
