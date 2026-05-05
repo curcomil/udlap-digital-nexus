@@ -27,3 +27,5 @@ from .users_controller import (
     reset_credentials_controller,
     get_coordinators_controller,
 )
+
+from .mets_controller import create_mets
