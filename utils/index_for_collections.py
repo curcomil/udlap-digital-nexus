@@ -28,6 +28,7 @@ def normalize_languages(value):
 
 def index_4_collections(record, dc, identifier):
     coleccion = record.get("coleccion")
+    subcoleccion = record.get("subcoleccion")
     md = record.get("metadata", {})
 
     match coleccion:
@@ -112,6 +113,25 @@ def index_4_collections(record, dc, identifier):
 
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "libros"
+
+        case x if x.startswith("Tesis"):
+            add_if_value(dc, "dc:title", md.get("titulo"))
+            add_if_value(dc, "dc:date", md.get("mdate"))
+            add_if_value(dc, "dc:description", md.get("resumen"))
+            for autor in md.get("autores", []):
+                add_if_value(dc, "dc:creator", autor)
+            add_if_value(dc, "dc:language", md.get("language"))
+            for keyword in md.get("palabras_clave", []):
+                add_if_value(dc, "dc:subject", keyword)
+            add_if_value(dc, "dc:relation", subcoleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            SubElement(dc, "dc:type").text = "tesis"
+            SubElement(dc, "dc:publisher").text = "Universidad de las Américas Puebla"
+            if record.get("status") == "abierto":
+                SubElement(dc, "dcterms:accessRights").text = "Open Access"
+            if record.get("status") == "comunidad":
+                SubElement(dc, "dcterms:accessRights").text = "Restricted Access"
+            SubElement(dc, "dc:identifier").text = identifier
 
         case _:
             add_if_value(dc, "dc:title", md.get("titulo"))

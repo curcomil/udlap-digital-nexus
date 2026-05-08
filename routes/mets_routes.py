@@ -5,7 +5,7 @@ inmediatamente con OK o error.
 
 Parámetro GET:
     set  - setspec de la colección, opcionalmente con subcolección separada
-           por ":" igual que en OAI-PMH ListSets.
+    por ":" igual que en OAI-PMH ListSets.
 
 Ejemplos:
     Colección completa:   GET /mets/run?set=archivo_historico_de_la_provincia_...
@@ -26,14 +26,20 @@ from controllers import create_mets
 
 mets_bp = Blueprint("mets", __name__, url_prefix="/mets")
 
-repo_items_acervo = MongoDBConnection_OAI("items")
+_REPO_COLLECTIONS = {
+    "acervo": ("items", "estructura"),
+    "tesis":  ("items_tesis", "estructura_tesis"),
+}
 
 
-def _run_mets_job(set_param: str, col_name: str, sub_name: str | None) -> None:
+def _run_mets_job(
+    set_param: str, col_name: str, sub_name: str | None,
+    items_col: str, estructura_col: str,
+) -> None:
     """Corre en background: recupera items y genera el tar.gz."""
     try:
         # 1. Recuperar items — find_items ya acepta sub_name=None para toda la colección
-        items = repo_items_acervo.find_items(col_name, sub_name)
+        items = MongoDBConnection_OAI(items_col).find_items(col_name, sub_name)
 
         if not items:
             print(f"[METS] ⚠  Sin items para set='{set_param}'")
@@ -42,7 +48,7 @@ def _run_mets_job(set_param: str, col_name: str, sub_name: str | None) -> None:
         print(f"[METS] {len(items)} items encontrados para set='{set_param}'")
 
         # 2. Recuperar estructura de la colección desde Mongo (para IDs y subcolecciones)
-        repo_estructura = MongoDBConnection_OAI("estructura")
+        repo_estructura = MongoDBConnection_OAI(estructura_col)
         col_structure = repo_estructura.collection.find_one(
             {"coleccion.name_collection": col_name}, {"_id": 0}
         )
@@ -79,18 +85,24 @@ def _run_mets_job(set_param: str, col_name: str, sub_name: str | None) -> None:
 @mets_bp.route("/run", methods=["GET"])
 def mets_run():
     """
-    GET /mets/run?set=<setspec>
+    GET /mets/run?set=<setspec>&repo=<acervo|tesis>
 
     Responde 202 inmediatamente y lanza la generación en background.
     El progreso se puede seguir en la consola del servidor.
     """
     set_param = request.args.get("set", "").strip()
+    repo = request.args.get("repo", "acervo").strip()
 
     if not set_param:
         return {"error": "Missing required parameter: set"}, 400
 
+    if repo not in _REPO_COLLECTIONS:
+        return {"error": f"repo '{repo}' no válido, opciones: {list(_REPO_COLLECTIONS)}"}, 400
+
+    items_col, estructura_col = _REPO_COLLECTIONS[repo]
+
     # setfilter resuelve el setspec contra Mongo y devuelve nombres legibles
-    filtros = setfilter(set_param)
+    filtros = setfilter(set_param, estructura_col)
 
     if not filtros:
         return {
@@ -103,14 +115,14 @@ def mets_run():
     # Lanzar job en background
     job = threading.Thread(
         target=_run_mets_job,
-        args=(set_param, col_name, sub_name),
+        args=(set_param, col_name, sub_name, items_col, estructura_col),
         daemon=True,
         name=f"mets-{set_param[:40]}",
     )
     job.start()
 
     print(
-        f"[METS] 🚀 Job iniciado — col='{col_name}'"
+        f"[METS] 🚀 Job iniciado — repo='{repo}' col='{col_name}'"
         + (f" sub='{sub_name}'" if sub_name else " (colección completa)")
     )
 
@@ -118,6 +130,7 @@ def mets_run():
         "status": "ok",
         "message": "Generación de METS AIP iniciada en background",
         "set": set_param,
+        "repo": repo,
         "coleccion": col_name,
         **({"subcoleccion": sub_name} if sub_name else {}),
     }, 202

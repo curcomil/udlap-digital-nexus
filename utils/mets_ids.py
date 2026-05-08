@@ -20,8 +20,8 @@ def slugify_id(text: str) -> str:
 
 
 def assign_handle_ids(col_structure: dict) -> tuple[str, dict[str, str]]:
-    com_id = slugify_id(col_structure["coleccion"]["setspec_collection"])
+    com_id = col_structure["coleccion"]["setspec_collection"]
     sub_ids = {}
     for sub in col_structure.get("subcolecciones", []):
-        sub_ids[sub["setspec_subcollection"]] = slugify_id(sub["setspec_subcollection"])
+        sub_ids[sub["name_subcollection"]] = sub["setspec_subcollection"]
     return com_id, sub_ids

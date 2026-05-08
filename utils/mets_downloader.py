@@ -1,6 +1,7 @@
 import hashlib
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import requests
 import urllib3
@@ -96,4 +97,29 @@ def download_with_reporting(
                     f"{type(e).__name__}: {e}",
                 )
 
+    return results
+
+
+def read_local_with_reporting(
+    pages: list[dict], zip_name: str, internal_id: str, titulo: str, add_issue
+) -> dict:
+    results = {}
+    for page in pages:
+        local_path = page.get("local_path", "")
+        file_name = page["file_name"]
+        try:
+            data = Path(local_path).read_bytes()
+            md5 = hashlib.md5(data).hexdigest()
+            results[file_name] = (data, md5, len(data))
+        except Exception as e:
+            results[file_name] = (None, "", 0)
+            add_issue(
+                "FILE",
+                zip_name,
+                internal_id,
+                titulo,
+                file_name,
+                local_path,
+                f"{type(e).__name__}: {e}",
+            )
     return results

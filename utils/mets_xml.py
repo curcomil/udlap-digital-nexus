@@ -6,6 +6,13 @@ from .index_for_collections import index_4_collections
 from .mets_ids import HANDLE_PREFIX, make_handle, make_mets_id
 
 DSPACE_PROFILE = "http://www.dspace.org/schema/aip/1.0/mets.xsd"
+
+_MIME = {"pdf": "application/pdf", "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png"}
+
+
+def _mime(file_name: str) -> str:
+    ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+    return _MIME.get(ext, "application/octet-stream")
 DSPACE_VERSION = "DSpace 7.6"
 CUSTODIAN_NAME = "Repositorio Digital UDLAP"
 
@@ -307,7 +314,18 @@ def build_item_mets(
     _dmd_dim(root, record, "dmdSec_2")
     _amd_item(root, record, "amd_item")
 
-    if "content" in record:
+    if record.get("coleccion", "").startswith("Tesis"):
+        all_pages = [
+            {
+                "file_name": f["file_name"],
+                "section_name": f["file_name"],
+                "section_number": i,
+                "page_number": 1,
+            }
+            for i, f in enumerate(record["content"], start=1)
+            if file_data.get(f.get("file_name", ""), (None,))[0] is not None
+        ]
+    elif "content" in record:
         all_pages = [
             {
                 "file_name": page["file_name"],
@@ -319,7 +337,6 @@ def build_item_mets(
             for page in section.get("pages", [])
         ]
     else:
-        # Item de imagen única: las páginas se derivan de lo que fue descargado
         all_pages = [
             {"file_name": fn, "section_name": None, "section_number": 0, "page_number": 1}
             for fn in file_data.keys()
@@ -328,7 +345,7 @@ def build_item_mets(
     for i, page in enumerate(all_pages, start=1):
         fn = page["file_name"]
         _, md5, size = file_data.get(fn, (None, "unknown", 0))
-        _amd_bitstream(root, f"file_{i}", f"amd_file_{i}", fn, md5, size, "image/jpeg")
+        _amd_bitstream(root, f"file_{i}", f"amd_file_{i}", fn, md5, size, _mime(fn))
 
     file_sec = SubElement(root, "mets:fileSec")
     grp_original = SubElement(file_sec, "mets:fileGrp", {"USE": "ORIGINAL"})
@@ -340,7 +357,7 @@ def build_item_mets(
             "mets:file",
             {
                 "ID": f"file_{i}",
-                "MIMETYPE": "image/jpeg",
+                "MIMETYPE": _mime(fn),
                 "SIZE": str(size),
                 "CHECKSUM": md5,
                 "CHECKSUMTYPE": "MD5",

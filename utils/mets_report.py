@@ -1,4 +1,21 @@
+import json
 from datetime import datetime
+
+
+def write_issues_json(path: str, set_spec: str, issues: list[dict]) -> None:
+    file_issues = [i for i in issues if i["level"] == "FILE"]
+    item_issues = [i for i in issues if i["level"] == "ITEM"]
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "set_spec": set_spec,
+                "file_issues": file_issues,
+                "item_issues": item_issues,
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
 
 
 def write_report(

@@ -1,10 +1,10 @@
 from db import MongoDBConnection_OAI
 
 
-def setfilter(filtro: str):
+def setfilter(filtro: str, estructura_col: str = "estructura"):
     prefijo, _, sufijo = filtro.partition(":")
 
-    repo_estructura = MongoDBConnection_OAI("estructura")
+    repo_estructura = MongoDBConnection_OAI(estructura_col)
     data = repo_estructura.set_filter(prefijo, sufijo if sufijo else None)
 
     res = []

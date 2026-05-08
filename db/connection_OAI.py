@@ -1,11 +1,13 @@
+import logging
+import os
+
+from dotenv import load_dotenv
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-from dotenv import load_dotenv
-import os
-from flask import current_app as app
 
 load_dotenv()
 uri = os.getenv("MONGODB_URI")
+logger = logging.getLogger(__name__)
 
 
 class MongoDBConnection_OAI:
@@ -20,10 +22,10 @@ class MongoDBConnection_OAI:
     def test_connection(self):
         try:
             self.client.admin.command('ping')
-            app.logger.info("Conexión a MongoDB exitosa")
+            logger.info("Conexión a MongoDB exitosa")
             return {"message": "Conexión a MongoDB exitosa"}
         except Exception as e:
-            app.logger.error(f"Error al conectar a MongoDB: {e}")
+            logger.error(f"Error al conectar a MongoDB: {e}")
             return {"error": "No se pudo conectar a MongoDB", "details": str(e)}, 500
 
 
@@ -31,7 +33,7 @@ class MongoDBConnection_OAI:
         try:
             return list(self.collection.find())
         except Exception as e:
-            app.logger.error(f"Error al obtener datos: {e}")
+            logger.error(f"Error al obtener datos: {e}")
             return []
 
     def set_filter(self, coleccion, subcoleccion):
@@ -44,7 +46,7 @@ class MongoDBConnection_OAI:
             return self.collection.find_one(query)
 
         except Exception as e:
-            app.logger.error(f"Error al obtener datos: {e}")
+            logger.error(f"Error al obtener datos: {e}")
             return None
 
     def find_items(self, coleccion, subcoleccion):
@@ -57,7 +59,7 @@ class MongoDBConnection_OAI:
             return list(self.collection.find(query, {"_id": 0}))
 
         except Exception as e:
-            app.logger.error(f"Error al obtener datos: {e}")
+            logger.error(f"Error al obtener datos: {e}")
             return []
         
     def find_item (self, identifier):
@@ -65,5 +67,5 @@ class MongoDBConnection_OAI:
             query = {"internal_id": identifier}
             return self.collection.find_one(query, {"internal_id": 0})
         except Exception as e:
-            app.logger.error(f"Error al obtener datos: {e}")
+            logger.error(f"Error al obtener datos: {e}")
             return None

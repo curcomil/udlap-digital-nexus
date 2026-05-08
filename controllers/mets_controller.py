@@ -17,13 +17,16 @@ import traceback as tb
 from datetime import datetime
 from pathlib import Path
 
-from utils.mets_downloader import download_with_reporting
-from utils.mets_ids import HANDLE_PREFIX, assign_handle_ids, make_zip_name, slugify_id
+from dotenv import load_dotenv
+
+from utils.mets_downloader import download_with_reporting, read_local_with_reporting
+from utils.mets_ids import HANDLE_PREFIX, assign_handle_ids, make_zip_name
 from utils.mets_packager import pack_container_zip, pack_item_zip
-from utils.mets_report import write_report
+from utils.mets_report import write_issues_json, write_report
 from utils.mets_xml import build_collection_mets, build_community_mets
 
-OUTPUT_DIR = Path(r"C:/Users/26193/Desktop/Mets")
+load_dotenv()
+OUTPUT_DIR = Path(os.getenv("METS_OUTPUT_DIR", "output"))
 
 
 def create_mets(
@@ -91,8 +94,7 @@ def create_mets(
     zip_buffer: list[tuple[str, bytes]] = []
 
     for sub_name, sub_items in items_by_sub.items():
-        sub_spec = slugify_id(sub_name)
-        col_id = sub_ids.get(sub_spec, sub_spec)
+        col_id = sub_ids.get(sub_name, sub_name)
         all_col_handle_ids.append(f"{HANDLE_PREFIX}/{col_id}")
         sub_item_map[col_id] = []
 
@@ -103,6 +105,16 @@ def create_mets(
             titulo = record.get("metadata", {}).get("titulo", "Sin título")
             zip_name = make_zip_name("ITEM", internal_id)
 
+            if record.get("status") == "restringido":
+                processed += 1
+                print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ restringido")
+                continue
+
+            if not record.get("content"):
+                processed += 1
+                print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ sin contenido")
+                continue
+
             print(
                 f"    [{processed+1:>4}/{total_items}] {titulo[:55]}...",
                 end=" ",
@@ -110,24 +122,50 @@ def create_mets(
             )
 
             try:
-                if "content" in record:
+                is_tesis = record.get("coleccion", "").startswith("Tesis")
+                is_local = is_tesis and record.get("status") == "comunidad"
+
+                if is_local:
+                    all_pages = [
+                        {"file_name": f.get("file_name", ""), "local_path": f.get("file_path", ""), "number": i}
+                        for i, f in enumerate(record["content"], start=1)
+                    ]
+                    file_data = read_local_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
+                elif is_tesis:
+                    all_pages = [
+                        {"file_name": f.get("file_name", ""), "url": f.get("file_url", ""), "number": i}
+                        for i, f in enumerate(record["content"], start=1)
+                    ]
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
+                elif "content" in record:
                     all_pages = [
                         page
                         for section in record["content"]
                         for page in section.get("pages", [])
                     ]
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
                 else:
                     url = record.get("url", "")
                     file_name = record.get("metadata", {}).get("imagen") or (
                         url.rstrip("/").split("/")[-1] if url else "imagen.jpg"
                     )
                     all_pages = [{"file_name": file_name, "url": url, "number": 1}]
-
-                file_data = download_with_reporting(
-                    all_pages, zip_name, internal_id, titulo, _add_issue
-                )
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
 
                 missing = sum(1 for d, _, _ in file_data.values() if d is None)
+
+                if is_tesis and missing == len(file_data):
+                    processed += 1
+                    print("⏭ todos los archivos fallaron, item omitido)")
+                    continue
 
                 item_zip = pack_item_zip(record, internal_id, col_id, file_data)
                 zip_buffer.append((zip_name, item_zip))
@@ -176,6 +214,8 @@ def create_mets(
         item_errors,
         report_issues,
     )
+    issues_json_path = os.path.join(out_dir, f"{clean_set_spec}_issues.json")
+    write_issues_json(issues_json_path, set_spec, report_issues)
 
     tar_mb = os.path.getsize(tar_path) / (1024 * 1024)
     file_issues = sum(1 for i in report_issues if i["level"] == "FILE")
