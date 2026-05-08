@@ -114,6 +114,33 @@ def index_4_collections(record, dc, identifier):
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "libros"
 
+        case "Colección Juan de Palafox y Mendoza":
+            add_if_value(dc, "dc:title", md.get("titulo"))
+            add_if_value(dc, "dc:creator", md.get("autor"))
+            add_if_value(dc, "dc:publisher", md.get("editor"))
+            add_if_value(dc, "dc:date", md.get("fecha_de_publicacion"))
+            for lang in normalize_languages(md.get("idioma")):
+                SubElement(dc, "dc:language").text = lang
+            add_if_value(dc, "dc:description", md.get("descripcion_fisica"))
+            add_if_value(dc, "dcterms:provenance", md.get("procedencia"))
+            add_if_value(dc, "dcterms:identifier", md.get("clasificacion"))
+            add_if_value(dc, "dcterms:identifier", md.get("numero_de_registro"))
+            add_if_value(
+                dc, "dcterms:spatial", md.get("lugar") or md.get("lugar_de_impresion")
+            )
+            add_if_value(dc, "dc:contributor", md.get("impresor"))
+
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:relation", md.get("marca_de_fuego_1"), "dcterms:URI")
+            add_if_value(dc, "dc:relation", md.get("marca_de_fuego_2"), "dcterms:URI")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
+            add_if_value(dc, "dcterms:hasPart", md.get("marcas_de_propiedad"))
+            add_if_value(dc, "dcterms:extent", md.get("pie_de_imprenta"))
+
+            SubElement(dc, "dc:identifier").text = identifier
+            SubElement(dc, "dc:type").text = "libros"
+
         case x if x.startswith("Tesis"):
             add_if_value(dc, "dc:title", md.get("titulo"))
             add_if_value(dc, "dc:date", md.get("mdate"))
