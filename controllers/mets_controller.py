@@ -110,7 +110,7 @@ def create_mets(
                 print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ restringido")
                 continue
 
-            if not record.get("content"):
+            if not record.get("content") and not record.get("url"):
                 processed += 1
                 print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ sin contenido")
                 continue
