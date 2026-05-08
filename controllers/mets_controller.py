@@ -147,6 +147,12 @@ def create_mets(
                         for section in record["content"]
                         for page in section.get("pages", [])
                     ]
+                    if not all_pages:
+                        _add_issue("ITEM", zip_name, internal_id, titulo, "", "", "content presente pero sin páginas")
+                        item_errors += 1
+                        processed += 1
+                        print("✗ sin páginas en content")
+                        continue
                     file_data = download_with_reporting(
                         all_pages, zip_name, internal_id, titulo, _add_issue
                     )
