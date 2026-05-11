@@ -116,6 +116,11 @@ def create_mets(
                     print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ restringido")
                     continue
 
+                if record.get("status") == "unavailable":
+                    processed += 1
+                    print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ no disponible")
+                    continue
+
                 if not record.get("content") and not record.get("url"):
                     processed += 1
                     print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ sin contenido")
@@ -131,46 +136,46 @@ def create_mets(
                     is_tesis = record.get("coleccion", "").startswith("Tesis")
                     is_local = is_tesis and record.get("status") == "comunidad"
 
-                    if is_local:
-                        all_pages = [
-                            {"file_name": f.get("file_name", ""), "local_path": f.get("file_path", ""), "number": i}
-                            for i, f in enumerate(record["content"], start=1)
-                        ]
-                        file_data = read_local_with_reporting(
-                            all_pages, zip_name, internal_id, titulo, _add_issue
-                        )
-                    elif is_tesis:
-                        all_pages = [
-                            {"file_name": f.get("file_name", ""), "url": f.get("file_url", ""), "number": i}
-                            for i, f in enumerate(record["content"], start=1)
-                        ]
-                        file_data = download_with_reporting(
-                            all_pages, zip_name, internal_id, titulo, _add_issue
-                        )
-                    elif "content" in record:
-                        all_pages = [
-                            page
-                            for section in record["content"]
-                            for page in section.get("pages", [])
-                        ]
-                        if not all_pages:
-                            _add_issue("ITEM", zip_name, internal_id, titulo, "", "", "content presente pero sin páginas")
-                            item_errors += 1
-                            processed += 1
-                            print("✗ sin páginas en content")
-                            continue
-                        file_data = download_with_reporting(
-                            all_pages, zip_name, internal_id, titulo, _add_issue
-                        )
-                    else:
-                        url = record.get("url", "")
-                        file_name = record.get("metadata", {}).get("imagen") or (
-                            url.rstrip("/").split("/")[-1] if url else "imagen.jpg"
-                        )
-                        all_pages = [{"file_name": file_name, "url": url, "number": 1}]
-                        file_data = download_with_reporting(
-                            all_pages, zip_name, internal_id, titulo, _add_issue
-                        )
+                if is_local:
+                    all_pages = [
+                        {"file_name": f.get("file_name", ""), "local_path": f.get("file_path", ""), "number": i}
+                        for i, f in enumerate(record["content"], start=1)
+                    ]
+                    file_data = read_local_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
+                elif is_tesis:
+                    all_pages = [
+                        {"file_name": f.get("file_name", ""), "url": f.get("file_url", ""), "number": i}
+                        for i, f in enumerate(record["content"], start=1)
+                    ]
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
+                elif "content" in record:
+                    all_pages = [
+                        page
+                        for section in record["content"]
+                        for page in section.get("pages", [])
+                    ]
+                    if not all_pages:
+                        _add_issue("ITEM", zip_name, internal_id, titulo, "", "", "content presente pero sin páginas")
+                        item_errors += 1
+                        processed += 1
+                        print("✗ sin páginas en content")
+                        continue
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
+                else:
+                    url = record.get("url", "")
+                    file_name = record.get("metadata", {}).get("imagen") or (
+                        url.rstrip("/").split("/")[-1] if url else "imagen.jpg"
+                    )
+                    all_pages = [{"file_name": file_name, "url": url, "number": 1}]
+                    file_data = download_with_reporting(
+                        all_pages, zip_name, internal_id, titulo, _add_issue
+                    )
 
                     missing = sum(1 for d, _, _ in file_data.values() if d is None)
 

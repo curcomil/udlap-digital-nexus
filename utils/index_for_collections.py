@@ -171,6 +171,26 @@ def index_4_collections(record, dc, identifier):
             if md.get("tipo_de_objeto"):
                 SubElement(dc, "dc:type").text = md["tipo_de_objeto"]
 
+        case "Archivo Porfirio Díaz Telegramas 1910":
+            SubElement(dc, "dc:title").text = "Telegrama"
+            add_if_value(dc, "dc:creator", md.get("persona_que_envia"))
+            add_if_value(dc, "dc:contributor", md.get("persona_que_recibe"))
+            add_if_value(dc, "dc:date", md.get("fecha"))
+            add_if_value(dc, "dcterms:spatial", md.get("lugar_donde_se_envia"))
+            add_if_value(dc, "dcterms:spatial", md.get("lugar_donde_se_recibe"))
+            add_if_value(
+                dc, "dc:subject", md.get("tema_principal") or md.get("tema")
+            )
+            add_if_value(dc, "dc:description", md.get("mensaje"))
+            add_if_value(dc, "dcterms:identifier", md.get("folio"))
+
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+            add_if_value(dc, "dc:source", record.get("portada_url"), "dcterms:URI")
+
+            SubElement(dc, "dc:identifier").text = identifier
+            SubElement(dc, "dc:type").text = "archival_document"
+
         case x if x.startswith("Tesis"):
             add_if_value(dc, "dc:title", md.get("titulo"))
             add_if_value(dc, "dc:date", md.get("mdate"))
