@@ -91,124 +91,122 @@ def create_mets(
 
     all_col_handle_ids: list[str] = []
     sub_item_map: dict[str, list[str]] = {}
-    zip_buffer: list[tuple[str, bytes]] = []
 
-    for sub_name, sub_items in items_by_sub.items():
-        col_id = sub_ids.get(sub_name, sub_name)
-        all_col_handle_ids.append(f"{HANDLE_PREFIX}/{col_id}")
-        sub_item_map[col_id] = []
+    def _tar_write(tar: tarfile.TarFile, name: str, zbytes: bytes) -> None:
+        info = tarfile.TarInfo(name=name)
+        info.size = len(zbytes)
+        tar.addfile(info, io.BytesIO(zbytes))
 
-        print(f"\n  📁 Subcolección: {sub_name} ({len(sub_items)} items)")
+    print(f"\n  📦 Escribiendo tar.gz en streaming...")
+    with tarfile.open(tar_path, "w:gz") as tar:
+        for sub_name, sub_items in items_by_sub.items():
+            col_id = sub_ids.get(sub_name, sub_name)
+            all_col_handle_ids.append(f"{HANDLE_PREFIX}/{col_id}")
+            sub_item_map[col_id] = []
 
-        for idx, record in enumerate(sub_items, start=1):
-            internal_id = record.get("internal_id", f"item_{idx}")
-            titulo = record.get("metadata", {}).get("titulo", "Sin título")
-            zip_name = make_zip_name("ITEM", internal_id)
+            print(f"\n  📁 Subcolección: {sub_name} ({len(sub_items)} items)")
 
-            if record.get("status") == "restringido":
-                processed += 1
-                print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ restringido")
-                continue
+            for idx, record in enumerate(sub_items, start=1):
+                internal_id = record.get("internal_id", f"item_{idx}")
+                titulo = record.get("metadata", {}).get("titulo", "Sin título")
+                zip_name = make_zip_name("ITEM", internal_id)
 
-            if not record.get("content") and not record.get("url"):
-                processed += 1
-                print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ sin contenido")
-                continue
-
-            print(
-                f"    [{processed+1:>4}/{total_items}] {titulo[:55]}...",
-                end=" ",
-                flush=True,
-            )
-
-            try:
-                is_tesis = record.get("coleccion", "").startswith("Tesis")
-                is_local = is_tesis and record.get("status") == "comunidad"
-
-                if is_local:
-                    all_pages = [
-                        {"file_name": f.get("file_name", ""), "local_path": f.get("file_path", ""), "number": i}
-                        for i, f in enumerate(record["content"], start=1)
-                    ]
-                    file_data = read_local_with_reporting(
-                        all_pages, zip_name, internal_id, titulo, _add_issue
-                    )
-                elif is_tesis:
-                    all_pages = [
-                        {"file_name": f.get("file_name", ""), "url": f.get("file_url", ""), "number": i}
-                        for i, f in enumerate(record["content"], start=1)
-                    ]
-                    file_data = download_with_reporting(
-                        all_pages, zip_name, internal_id, titulo, _add_issue
-                    )
-                elif "content" in record:
-                    all_pages = [
-                        page
-                        for section in record["content"]
-                        for page in section.get("pages", [])
-                    ]
-                    if not all_pages:
-                        _add_issue("ITEM", zip_name, internal_id, titulo, "", "", "content presente pero sin páginas")
-                        item_errors += 1
-                        processed += 1
-                        print("✗ sin páginas en content")
-                        continue
-                    file_data = download_with_reporting(
-                        all_pages, zip_name, internal_id, titulo, _add_issue
-                    )
-                else:
-                    url = record.get("url", "")
-                    file_name = record.get("metadata", {}).get("imagen") or (
-                        url.rstrip("/").split("/")[-1] if url else "imagen.jpg"
-                    )
-                    all_pages = [{"file_name": file_name, "url": url, "number": 1}]
-                    file_data = download_with_reporting(
-                        all_pages, zip_name, internal_id, titulo, _add_issue
-                    )
-
-                missing = sum(1 for d, _, _ in file_data.values() if d is None)
-
-                if is_tesis and missing == len(file_data):
+                if record.get("status") == "restringido":
                     processed += 1
-                    print("⏭ todos los archivos fallaron, item omitido)")
+                    print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ restringido")
                     continue
 
-                item_zip = pack_item_zip(record, internal_id, col_id, file_data)
-                zip_buffer.append((zip_name, item_zip))
-                sub_item_map[col_id].append(f"{HANDLE_PREFIX}/{internal_id}")
+                if not record.get("content") and not record.get("url"):
+                    processed += 1
+                    print(f"    [{processed:>4}/{total_items}] {titulo[:55]}... ⏭ sin contenido")
+                    continue
 
-                processed += 1
-                status = f"✓ ({len(all_pages)} imgs"
-                if missing:
-                    status += f", ⚠ {missing} faltantes"
-                print(status + ")")
+                print(
+                    f"    [{processed+1:>4}/{total_items}] {titulo[:55]}...",
+                    end=" ",
+                    flush=True,
+                )
 
-            except Exception as e:
-                detail = f"{type(e).__name__}: {e}\n{tb.format_exc()}"
-                _add_issue("ITEM", zip_name, internal_id, titulo, "", "", detail)
-                item_errors += 1
-                processed += 1
-                print(f"✗ ERROR CRÍTICO: {e}")
+                try:
+                    is_tesis = record.get("coleccion", "").startswith("Tesis")
+                    is_local = is_tesis and record.get("status") == "comunidad"
 
-        col_mets = build_collection_mets(
-            sub_name, col_id, community_id, sub_item_map[col_id]
-        )
-        col_zip = pack_container_zip(col_mets)
-        zip_buffer.append((make_zip_name("COLLECTION", col_id), col_zip))
-        print(f"    ✓ COLLECTION AIP ({len(sub_item_map[col_id])} items)")
+                    if is_local:
+                        all_pages = [
+                            {"file_name": f.get("file_name", ""), "local_path": f.get("file_path", ""), "number": i}
+                            for i, f in enumerate(record["content"], start=1)
+                        ]
+                        file_data = read_local_with_reporting(
+                            all_pages, zip_name, internal_id, titulo, _add_issue
+                        )
+                    elif is_tesis:
+                        all_pages = [
+                            {"file_name": f.get("file_name", ""), "url": f.get("file_url", ""), "number": i}
+                            for i, f in enumerate(record["content"], start=1)
+                        ]
+                        file_data = download_with_reporting(
+                            all_pages, zip_name, internal_id, titulo, _add_issue
+                        )
+                    elif "content" in record:
+                        all_pages = [
+                            page
+                            for section in record["content"]
+                            for page in section.get("pages", [])
+                        ]
+                        if not all_pages:
+                            _add_issue("ITEM", zip_name, internal_id, titulo, "", "", "content presente pero sin páginas")
+                            item_errors += 1
+                            processed += 1
+                            print("✗ sin páginas en content")
+                            continue
+                        file_data = download_with_reporting(
+                            all_pages, zip_name, internal_id, titulo, _add_issue
+                        )
+                    else:
+                        url = record.get("url", "")
+                        file_name = record.get("metadata", {}).get("imagen") or (
+                            url.rstrip("/").split("/")[-1] if url else "imagen.jpg"
+                        )
+                        all_pages = [{"file_name": file_name, "url": url, "number": 1}]
+                        file_data = download_with_reporting(
+                            all_pages, zip_name, internal_id, titulo, _add_issue
+                        )
 
-    com_mets = build_community_mets(col_name, community_id, all_col_handle_ids)
-    com_zip = pack_container_zip(com_mets)
-    zip_buffer.append((make_zip_name("COMMUNITY", community_id), com_zip))
-    print(f"\n  ✓ COMMUNITY AIP generado")
+                    missing = sum(1 for d, _, _ in file_data.values() if d is None)
 
-    print(f"\n  📦 Empaquetando tar.gz...", end=" ", flush=True)
-    with tarfile.open(tar_path, "w:gz") as tar:
-        for zname, zbytes in zip_buffer:
-            info = tarfile.TarInfo(name=zname)
-            info.size = len(zbytes)
-            tar.addfile(info, io.BytesIO(zbytes))
-    print("✓")
+                    if is_tesis and missing == len(file_data):
+                        processed += 1
+                        print("⏭ todos los archivos fallaron, item omitido)")
+                        continue
+
+                    item_zip = pack_item_zip(record, internal_id, col_id, file_data)
+                    _tar_write(tar, zip_name, item_zip)
+                    sub_item_map[col_id].append(f"{HANDLE_PREFIX}/{internal_id}")
+
+                    processed += 1
+                    status = f"✓ ({len(all_pages)} imgs"
+                    if missing:
+                        status += f", ⚠ {missing} faltantes"
+                    print(status + ")")
+
+                except Exception as e:
+                    detail = f"{type(e).__name__}: {e}\n{tb.format_exc()}"
+                    _add_issue("ITEM", zip_name, internal_id, titulo, "", "", detail)
+                    item_errors += 1
+                    processed += 1
+                    print(f"✗ ERROR CRÍTICO: {e}")
+
+            col_mets = build_collection_mets(
+                sub_name, col_id, community_id, sub_item_map[col_id]
+            )
+            col_zip = pack_container_zip(col_mets)
+            _tar_write(tar, make_zip_name("COLLECTION", col_id), col_zip)
+            print(f"    ✓ COLLECTION AIP ({len(sub_item_map[col_id])} items)")
+
+        com_mets = build_community_mets(col_name, community_id, all_col_handle_ids)
+        com_zip = pack_container_zip(com_mets)
+        _tar_write(tar, make_zip_name("COMMUNITY", community_id), com_zip)
+        print(f"\n  ✓ COMMUNITY AIP generado")
 
     write_report(
         report_path,
