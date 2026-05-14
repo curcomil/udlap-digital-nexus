@@ -152,6 +152,14 @@ def create_mets(
                         file_data = download_with_reporting(
                             all_pages, zip_name, internal_id, titulo, _add_issue
                         )
+                    elif record.get("pdf_url"):
+                        file_name = record.get("metadata", {}).get("archivo_digitalizado") or (
+                            record["pdf_url"].rstrip("/").split("/")[-1]
+                        )
+                        all_pages = [{"file_name": file_name, "url": record["pdf_url"], "number": 1}]
+                        file_data = download_with_reporting(
+                            all_pages, zip_name, internal_id, titulo, _add_issue
+                        )
                     elif "content" in record:
                         first = record["content"][0] if record["content"] else {}
                         if "pages" in first:

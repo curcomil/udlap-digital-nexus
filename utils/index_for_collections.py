@@ -191,6 +191,21 @@ def index_4_collections(record, dc, identifier):
             SubElement(dc, "dc:identifier").text = identifier
             SubElement(dc, "dc:type").text = "archival_document"
 
+        case "Periódicos Universitarios":
+            add_if_value(dc, "dc:title", md.get("titulo_de_la_publicacion"))
+            add_if_value(dc, "dc:date", md.get("fecha_de_publicacion"))
+            add_if_value(dc, "dcterms:spatial", md.get("lugar_de_publicacion"))
+            add_if_value(dc, "dcterms:identifier", md.get("volumen"))
+            add_if_value(dc, "dcterms:identifier", md.get("numero"))
+            add_if_value(dc, "dcterms:extent", md.get("numero_de_paginas"))
+            add_if_value(dc, "dc:description", md.get("encabezados"))
+            add_if_value(dc, "dc:relation", subcoleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:relation", coleccion, "dcterms:isPartOf")
+            add_if_value(dc, "dc:source", record.get("item_url"))
+
+            SubElement(dc, "dc:identifier").text = identifier
+            SubElement(dc, "dc:type").text = "periodico"
+
         case x if x.startswith("Tesis"):
             add_if_value(dc, "dc:title", md.get("titulo"))
             add_if_value(dc, "dc:date", md.get("mdate"))
