@@ -1,3 +1,4 @@
+import os
 from flask import current_app as app
 from flask_cors import CORS
 from flask import Blueprint, request
@@ -19,20 +20,32 @@ CORS(xmlibris_bp, origins="*")
 
 @xmlibris_bp.route("/", methods=["GET"])
 def xmlibris_root():
-    return {"message": "xmlibris root endpoint", "avalible_endpoints": ["/amc"]}
+    if os.getenv("ENVIROMENT") == "debug":
+        return {
+            "message": "XMLibris root endpoint.",
+            "available_endpoints": [
+                {"path": "/amc", "description": "Colección Archivo Miguel Covarrubias"},
+                {"path": "/newcollection", "method": "POST", "auth": "coordinator", "description": "Crear nueva colección"},
+            ],
+        }
+    return {"message": "XMLibris endpoint."}
 
 
 @xmlibris_bp.route("/amc", methods=["GET"])
 def amc_root():
-    return {
-        "message": "AMC root endpoint.",
-        "available_endpoints": [
-            "/carpetas",
-            "/carpeta/<carpeta_id>",
-            "/items",
-            "/items/<carpeta_id>",
-        ],
-    }
+    if os.getenv("ENVIROMENT") == "debug":
+        return {
+            "message": "AMC root endpoint.",
+            "available_endpoints": [
+                {"path": "/amc/carpetas", "method": "GET"},
+                {"path": "/amc/carpeta/<carpeta_id>", "method": "GET"},
+                {"path": "/amc/carpeta/<carpeta_id>", "method": "PUT"},
+                {"path": "/amc/items/<carpeta_id>", "method": "GET"},
+                {"path": "/amc/item/<item_id>", "method": "PUT"},
+                {"path": "/amc/findbyfilter", "method": "POST"},
+            ],
+        }
+    return {"message": "AMC endpoint."}
 
 
 @xmlibris_bp.route("/amc/carpetas", methods=["GET"])

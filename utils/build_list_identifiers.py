@@ -1,14 +1,11 @@
 import re
 import unicodedata
-from flask import current_app as app
-from db import MongoDBConnection_OAI
 
-repo_items = MongoDBConnection_OAI("items")
 
 def normalizar_setspec(texto: str) -> str:
     if not texto:
         return ""
-    
+
     texto = texto.lower()
     texto = (
         unicodedata.normalize("NFKD", texto)
@@ -31,7 +28,7 @@ def parse_oai_date(date_str: str) -> str | None:
 def build_list_identifiers(
     base_url: str,
     metadata_prefix: str,
-    set_filter: list | None = None,
+    items: list,
     date_from: str | None = None,
     date_until: str | None = None,
 ) -> list[dict]:
@@ -39,25 +36,16 @@ def build_list_identifiers(
     if metadata_prefix != "oai_dc":
         raise ValueError("cannotDisseminateFormat")
 
-    headers: list[dict] = []
-
-    if set_filter:
-        col_id = set_filter[0]
-        sub_id = set_filter[1] if len(set_filter) > 1 else None
-        items = repo_items.find_items(col_id, sub_id)
-    else:
-        items = repo_items.get_all()
-
     if not items:
         return []
+
+    headers: list[dict] = []
 
     for item in items:
         internal_id = item.get("internal_id")
         mdate_raw = item.get("metadata", {}).get("mdate")
-        
         col_raw = item.get("coleccion")
         sub_raw = item.get("subcoleccion")
-
 
         if not internal_id or not mdate_raw or not col_raw:
             continue
@@ -71,10 +59,8 @@ def build_list_identifiers(
         if date_until and datestamp > date_until:
             continue
 
-  
         col_norm = normalizar_setspec(col_raw)
         sub_norm = normalizar_setspec(sub_raw)
-
         setspec_final = f"{col_norm}:{sub_norm}" if sub_norm else col_norm
 
         headers.append(

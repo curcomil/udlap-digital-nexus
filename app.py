@@ -1,6 +1,7 @@
 from flask import Flask, request
 from routes import blueprints
 from dotenv import load_dotenv
+from db import MongoDBConnection_OAI
 from flask_jwt_extended import JWTManager
 from middlewares import jwt_handlers_messages
 from datetime import timedelta
@@ -28,8 +29,19 @@ def log_request_info():
 
 @app.route("/api", strict_slashes=False)
 def home():
-    app.logger.info(f"Acceso a home")
-    return {"mensaje": "q pedo api"}
+    if ENVIROMENT == "debug":
+        db_status = MongoDBConnection_OAI("items").test_connection()
+        return {
+            "message": "API root endpoint.",
+            "db_connection": db_status,
+            "available_endpoints": [
+                {"path": "/api/oai", "description": "OAI-PMH protocol"},
+                {"path": "/api/auth", "description": "Autenticación"},
+                {"path": "/api/users", "description": "Gestión de usuarios (requiere JWT admin)"},
+                {"path": "/api/xmlibris", "description": "Gestión de colecciones XMLibris"},
+            ],
+        }
+    return {"message": "UDLAP API."}
 
 
 API_PREFIX = "/api"

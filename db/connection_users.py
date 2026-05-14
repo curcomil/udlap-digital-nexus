@@ -17,8 +17,13 @@ class MongoDBConnection_Users:
         self.collection = self.db[collection_name]
 
     def get__users(self):
-        result = list(self.collection.find({}))
-        return result
+        try:
+            data = list(self.collection.find({}))
+            if not data:
+                return {"success": False, "message": "No se encontraron usuarios", "data": [], "status": 404}
+            return {"success": True, "data": data, "status": 200}
+        except Exception as e:
+            return {"success": False, "message": f"Error al obtener usuarios: {e}", "status": 500}
 
     def update_user(self, data: dict, id: str):
         try:
@@ -141,5 +146,10 @@ class MongoDBConnection_Users:
             }
 
     def get_coordinators(self):
-        result = list(self.collection.find({"role": "coordinator", "isActive": True}))
-        return result
+        try:
+            data = list(self.collection.find({"role": "coordinator", "isActive": True}))
+            if not data:
+                return {"success": False, "message": "No se encontraron coordinadores", "data": [], "status": 404}
+            return {"success": True, "data": data, "status": 200}
+        except Exception as e:
+            return {"success": False, "message": f"Error al obtener coordinadores: {e}", "status": 500}

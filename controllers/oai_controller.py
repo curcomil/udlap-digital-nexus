@@ -1,6 +1,6 @@
-from pathlib import Path
 from flask import Response
 from datetime import datetime
+import logging
 import os
 from utils import (
     jsonToOAI,
@@ -11,23 +11,14 @@ from utils import (
     setfilter,
     parse_oai_date,
 )
-import json
-from flask import current_app as app
 import xml.etree.ElementTree as ET
 from db import MongoDBConnection_OAI
 
 URL = os.getenv("URL") or "unknown"
-DEPLOY_BASE_PATH = Path(__file__).resolve().parent.parent
-ROOT_PATH = DEPLOY_BASE_PATH / "db" / "json"
-RECORDS_PATH = DEPLOY_BASE_PATH / "db" / "json" / "records"
-repo_items = MongoDBConnection_OAI("items")
-repo_estructura = MongoDBConnection_OAI("estructura")
+logger = logging.getLogger(__name__)
 
 
 def oai_error(code: str, message: str) -> Response:
-
-    # Retorna un error OAI-PMH válido
-
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -36,12 +27,10 @@ def oai_error(code: str, message: str) -> Response:
   <responseDate>{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}</responseDate>
   <error code="{code}">{message}</error>
 </OAI-PMH>"""
-
     return Response(xml, status=200, mimetype="text/xml; charset=utf-8")
 
 
 def identify(repositorio):
-    """Responde al verbo Identify del protocolo OAI-PMH."""
     repoIdentifier = (
         "coleccionesdigitales"
         if repositorio == "colecciones_digitales"
@@ -81,7 +70,6 @@ def identify(repositorio):
 
 
 def list_metadata_formats():
-    """Responde al verbo ListMetadataFormats."""
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -106,29 +94,14 @@ def list_metadata_formats():
 
 
 def list_sets():
-
     try:
+        repo_estructura = MongoDBConnection_OAI("estructura")
         data = repo_estructura.get_all()
-        sets = []
-
-        for collection in data:
-            sets.append(collection)
-
-        xml_str = jsonToOAI(sets, URL)
-
+        xml_str = jsonToOAI(data, URL)
         return Response(xml_str, status=200, mimetype="text/xml; charset=utf-8")
-
-    except json.JSONDecodeError as e:
-        app.logger.error(f"JSON mal formado: {e}")
-        return oai_error(
-            "internalServerError", "Error interno, contacte al administrador"
-        )
-
     except Exception as e:
-        app.logger.exception("Error inesperado en ListSets")
-        return oai_error(
-            "internalServerError", "Error interno, contacte al administrador"
-        )
+        logger.exception("Error inesperado en ListSets")
+        return oai_error("internalServerError", "Error interno, contacte al administrador")
 
 
 def list_identifiers(
@@ -138,8 +111,6 @@ def list_identifiers(
     date_until=None,
     repositorio=None,
 ):
-
-    # Responde al verbo ListIdentifiers
     repoIdentifier = (
         "coleccionesdigitales"
         if repositorio == "colecciones_digitales"
@@ -159,38 +130,42 @@ def list_identifiers(
 
         root = ET.Element(f"{{{NS}}}OAI-PMH", {f"{{{XSI}}}schemaLocation": SCHEMA})
 
-        # responseDate
         response_date = ET.SubElement(root, "responseDate")
         response_date.text = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # request
         request = ET.SubElement(
             root, "request", {"verb": "ListIdentifiers", "metadataPrefix": "oai_dc"}
         )
         request.text = URL + f"/api/oai/{repositorio}"
 
-        # ListIdentifiers
-        list_identifiers = ET.SubElement(root, "ListIdentifiers")
+        list_identifiers_el = ET.SubElement(root, "ListIdentifiers")
 
         for h in headers:
-            header = ET.SubElement(list_identifiers, "header")
-
-            identifier = ET.SubElement(header, "identifier")
-            identifier.text = h["identifier"]
-
-            datestamp = ET.SubElement(header, "datestamp")
-            datestamp.text = h["datestamp"]
-
-            set_spec = ET.SubElement(header, "setSpec")
-            set_spec.text = h["setSpec"]
+            header = ET.SubElement(list_identifiers_el, "header")
+            ET.SubElement(header, "identifier").text = h["identifier"]
+            ET.SubElement(header, "datestamp").text = h["datestamp"]
+            ET.SubElement(header, "setSpec").text = h["setSpec"]
 
         return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
 
     try:
+        repo_items = MongoDBConnection_OAI("items")
+
+        if set_filter:
+            prefijo, _, sufijo = set_filter.partition(":")
+            repo_estructura = MongoDBConnection_OAI("estructura")
+            estructura_data = repo_estructura.set_filter(prefijo, sufijo if sufijo else None)
+            filtros = setfilter(set_filter, estructura_data)
+            col_id = filtros[0] if filtros else None
+            sub_id = filtros[1] if len(filtros) > 1 else None
+            items = repo_items.find_items(col_id, sub_id)
+        else:
+            items = repo_items.get_all()
+
         headers = build_list_identifiers(
             base_url=repoIdentifier + ".udlap.mx",
             metadata_prefix=metadata_prefix,
-            set_filter=setfilter(set_filter) if set_filter else None,
+            items=items,
             date_from=date_from,
             date_until=date_until,
         )
@@ -199,13 +174,11 @@ def list_identifiers(
             return oai_error("noRecordsMatch", "No hay registros")
 
         xml = render_list_identifiers_xml(headers)
-
         return Response(xml, content_type="text/xml; charset=utf-8", status=200)
 
     except ValueError as e:
         if str(e) == "cannotDisseminateFormat":
             return oai_error("cannotDisseminateFormat", "Formato no soportado")
-
         return oai_error("badArgument", "Argumentos inválidos")
 
 
@@ -214,40 +187,33 @@ def get_record(identifier, metadata_prefix="oai_dc", repositorio=None):
     if not repositorio or not identifier.startswith(repositorio):
         return oai_error("badArgument", "Invalid identifier")
 
-    internal_id = identifier[len(repositorio) :]
+    internal_id = identifier[len(repositorio):]
+    repo_items = MongoDBConnection_OAI("items")
 
-    def find_id(id_for_find):
-
-        try:
-            record_data = {
-                "record": {},
-                "setSpec": "",
-            }
-
-            item = repo_items.find_item(id_for_find)
-            if item:
-                record_data["record"] = item
-                record_data["setSpec"] = (
-                    f"{normalizar(item.get('coleccion', 'unknown'))}:{normalizar(item.get('subcoleccion', 'unknown'))}"
-                )
-                return record_data
-
-        except Exception as e:
-            app.logger.exception("Error buscando el ID", e)
-            return None
-
-    record = find_id(internal_id)
-
-    if not record:
+    try:
+        item = repo_items.find_item(internal_id)
+    except Exception as e:
+        logger.exception("Error buscando el ID")
         return oai_error("idDoesNotExist", "Record not found")
 
+    if not item:
+        return oai_error("idDoesNotExist", "Record not found")
+
+    set_spec = (
+        f"{normalizar(item.get('coleccion', 'unknown'))}:"
+        f"{normalizar(item.get('subcoleccion', 'unknown'))}"
+    )
+
     xml = render_get_record_xml(
-        record=record["record"],
+        record=item,
         base_url=f"{URL}/api/oai/colecciones_digitales",
         identifier=identifier,
         metadata_prefix=metadata_prefix,
-        set_spec=record["setSpec"],
+        set_spec=set_spec,
     )
+
+    if xml is None:
+        return oai_error("cannotDisseminateFormat", "Record metadata is incomplete")
 
     return Response(xml, content_type="text/xml; charset=utf-8", status=200)
 
@@ -269,9 +235,14 @@ def list_records(
     )
 
     try:
+        repo_items = MongoDBConnection_OAI("items")
+
         if set_filter:
-            filtros = setfilter(set_filter)
-            col_id = filtros[0]
+            prefijo, _, sufijo = set_filter.partition(":")
+            repo_estructura = MongoDBConnection_OAI("estructura")
+            estructura_data = repo_estructura.set_filter(prefijo, sufijo if sufijo else None)
+            filtros = setfilter(set_filter, estructura_data)
+            col_id = filtros[0] if filtros else None
             sub_id = filtros[1] if len(filtros) > 1 else None
             items = repo_items.find_items(col_id, sub_id)
         else:
@@ -279,7 +250,6 @@ def list_records(
 
         final_records = []
         for item in items:
-
             mdate_raw = item.get("metadata", {}).get("mdate")
             datestamp = parse_oai_date(mdate_raw) if mdate_raw else None
 
@@ -314,5 +284,5 @@ def list_records(
         return Response(xml, content_type="text/xml; charset=utf-8", status=200)
 
     except Exception as e:
-        app.logger.exception(f"Error en list_records: {e}")
+        logger.exception(f"Error en list_records: {e}")
         return oai_error("badArgument", "Invalid arguments or database error")

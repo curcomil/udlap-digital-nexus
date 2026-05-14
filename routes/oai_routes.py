@@ -1,3 +1,4 @@
+import os
 from flask import current_app as app
 from flask import Blueprint, request
 from controllers import (
@@ -8,17 +9,27 @@ from controllers import (
     get_record,
     list_records,
 )
-from db import MongoDBConnection_OAI
-
 oai_bp = Blueprint("oai", __name__)
 
 
 @oai_bp.route("/", methods=["GET"])
 def oai_root():
-    return {
-        "message": "OAI root endpoint.",
-        "available_endpoints": ["/colecciones_digitales", "/tesis_digitales"],
-    }
+    if os.getenv("ENVIROMENT") == "debug":
+        return {
+            "message": "OAI-PMH root endpoint.",
+            "available_endpoints": ["/colecciones_digitales"],
+            "usage": "GET /colecciones_digitales?verb=<verb>&metadataPrefix=oai_dc",
+            "supported_verbs": [
+                "Identify",
+                "ListMetadataFormats",
+                "ListSets",
+                "ListIdentifiers",
+                "GetRecord",
+                "ListRecords",
+            ],
+            "optional_params": ["set", "from", "until", "identifier"],
+        }
+    return {"message": "OAI-PMH endpoint."}
 
 
 @oai_bp.route("/colecciones_digitales", methods=["GET"])
@@ -54,7 +65,9 @@ def oai_colecciones():
             repositorio="colecciones_digitales",
         )
 
-    elif verb == "GetRecord": 
+    elif verb == "GetRecord":
+        if not identifier:
+            return {"error": "Missing required parameter: identifier"}, 400
         return get_record(
             identifier,
             metadata_prefix,
@@ -73,9 +86,4 @@ def oai_colecciones():
             repositorio="colecciones_digitales",
         )
     
-    elif verb == "test":    
-        db = MongoDBConnection_OAI("colecciones_digitales")
-        result = db.test_connection()
-        return result
-
     return {"error": f"Unsupported verb: {verb}"}, 400
