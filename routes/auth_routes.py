@@ -2,6 +2,7 @@ import os
 from flask_cors import CORS
 from flask import Blueprint, request
 from controllers import register, login
+from utils import get_debug_docs
 
 auth_bp = Blueprint("auth", __name__)
 CORS(auth_bp, origins="*")
@@ -10,13 +11,7 @@ CORS(auth_bp, origins="*")
 @auth_bp.route("/", methods=["GET"])
 def auth_root():
     if os.getenv("ENVIROMENT") == "debug":
-        return {
-            "message": "Auth root endpoint.",
-            "available_endpoints": [
-                {"path": "/xmlibris/register", "method": "POST"},
-                {"path": "/xmlibris/login", "method": "POST"},
-            ],
-        }
+        return get_debug_docs("auth")
     return {"message": "Auth endpoint."}
 
 

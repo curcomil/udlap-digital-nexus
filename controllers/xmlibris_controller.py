@@ -20,38 +20,63 @@ def normalizar_setspec(texto: str) -> str:
 
 
 def get_all_carpetas(coleccion: str):
-    db = MongoDBConnection_XMLibris(coleccion)
-    result = db.get_all_carpetas()
+    db = MongoDBConnection_XMLibris("colecciones")
+    result = db.get_all_carpetas(coleccion)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
+
+
+def get_all_collections():
+    db = MongoDBConnection_XMLibris("colecciones")
+    result = db.get_all_collections()
+    status = result.pop("status", 500)
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def get_items_by_carpeta_id(coleccion: str, carpeta_id: str):
     db = MongoDBConnection_XMLibris(coleccion)
     result = db.get_items_by_carpeta_id(carpeta_id)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def get_carpeta_by_id(coleccion: str, carpeta_id: ObjectId):
     db = MongoDBConnection_XMLibris(coleccion)
     result = db.get_carpeta_by_id(ObjectId(carpeta_id))
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def actualizar_carpeta(coleccion: str, carpeta_id: ObjectId, data: dict):
     db = MongoDBConnection_XMLibris(coleccion)
     result = db.update_carpeta(ObjectId(carpeta_id), data)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def actulizar_item(coleccion: str, item_id: ObjectId, data: dict):
     db = MongoDBConnection_XMLibris(coleccion)
     result = db.update_item(ObjectId(item_id), data)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def search_by_filter(coleccion: str, data: dict):
@@ -60,7 +85,10 @@ def search_by_filter(coleccion: str, data: dict):
         data["query"] = normalizar_setspec(data.get("query"))
     result = db.search_by_filters(data)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )
 
 
 def new_collection_controller(
@@ -89,4 +117,7 @@ def new_collection_controller(
     }
     result = mongo.new_collection(data=new_collection_data)
     status = result.pop("status", 500)
-    return Response(json.dumps(result, default=str), mimetype="application/json"), status
+    return (
+        Response(json.dumps(result, default=str), mimetype="application/json"),
+        status,
+    )

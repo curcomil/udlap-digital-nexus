@@ -16,7 +16,7 @@ class MongoDBConnection_XMLibris:
     def __init__(self, collection_name):
         # Comentar server_api si se usa MongoLocal
         self.client = MongoClient(uri, server_api=ServerApi("1"))
-        self.db = self.client["udlap"]
+        self.db = self.client["xmlibris"]
         self.collection = self.db[collection_name]
 
     def test_connection(self):
@@ -38,17 +38,42 @@ class MongoDBConnection_XMLibris:
                 "collection": self.collection.name,
             }
 
-    def get_all_carpetas(self):
+    def get_all_collections(self):
         try:
-            data = list(self.collection.find({"type": "carpeta"}))
-            if not data:
+            collections = list(self.collection.find({}))
+            if not collections:
+                return {
+                    "success": False,
+                    "message": "No se encontraron colecciones",
+                    "data": [],
+                    "status": 404,
+                }
+            return {"success": True, "data": collections, "status": 200}
+        except Exception as e:
+            logger.error(f"Error al obtener colecciones: {e}")
+            return {"success": False, "message": str(e), "status": 500}
+
+    def get_all_carpetas(self, nombre_coleccion):
+        try:
+            coleccion = self.collection.find_one(
+                {"coleccion.setspec_collection": nombre_coleccion}
+            )
+            if not coleccion:
                 return {
                     "success": False,
                     "message": "No se encontraron carpetas",
                     "data": [],
                     "status": 404,
                 }
-            return {"success": True, "data": data, "status": 200}
+            if not coleccion.get("subcolecciones"):
+                return {
+                    "success": False,
+                    "message": "No se encontraron subcolecciones",
+                    "data": [],
+                    "status": 404,
+                }
+            subcolecciones = coleccion.get("subcolecciones")
+            return {"success": True, "data": subcolecciones, "status": 200}
         except Exception as e:
             logger.error(f"Error al obtener carpetas: {e}")
             return {"success": False, "message": str(e), "status": 500}

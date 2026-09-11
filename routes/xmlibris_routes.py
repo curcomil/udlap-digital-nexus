@@ -4,6 +4,7 @@ from flask_cors import CORS
 from flask import Blueprint, request
 from bson import ObjectId
 from middlewares import require_coordinator
+from utils import get_debug_docs
 from controllers import (
     get_all_carpetas,
     get_items_by_carpeta_id,
@@ -12,6 +13,7 @@ from controllers import (
     actulizar_item,
     search_by_filter,
     new_collection_controller,
+    get_all_collections,
 )
 
 xmlibris_bp = Blueprint("xmlibris", __name__)
@@ -21,30 +23,14 @@ CORS(xmlibris_bp, origins="*")
 @xmlibris_bp.route("/", methods=["GET"])
 def xmlibris_root():
     if os.getenv("ENVIROMENT") == "debug":
-        return {
-            "message": "XMLibris root endpoint.",
-            "available_endpoints": [
-                {"path": "/<coleccion>", "description": "Colección por nombre normalizado"},
-                {"path": "/newcollection", "method": "POST", "auth": "coordinator", "description": "Crear nueva colección"},
-            ],
-        }
+        return get_debug_docs("xmlibris")
     return {"message": "XMLibris endpoint."}
 
 
 @xmlibris_bp.route("/<coleccion>", methods=["GET"])
 def coleccion_root(coleccion):
     if os.getenv("ENVIROMENT") == "debug":
-        return {
-            "message": f"{coleccion} root endpoint.",
-            "available_endpoints": [
-                {"path": f"/{coleccion}/carpetas", "method": "GET"},
-                {"path": f"/{coleccion}/carpeta/<carpeta_id>", "method": "GET"},
-                {"path": f"/{coleccion}/carpeta/<carpeta_id>", "method": "PUT"},
-                {"path": f"/{coleccion}/items/<carpeta_id>", "method": "GET"},
-                {"path": f"/{coleccion}/item/<item_id>", "method": "PUT"},
-                {"path": f"/{coleccion}/findbyfilter", "method": "POST"},
-            ],
-        }
+        return get_debug_docs("coleccion", coleccion=coleccion)
     return {"message": f"{coleccion} endpoint."}
 
 
@@ -116,3 +102,8 @@ def new_collection_route():
         submitted_user_data=submitted_user,
         new_collection_data=data,
     )
+
+
+@xmlibris_bp.route("/getallcollections", methods=["GET"])
+def get_all_collections_route():
+    return get_all_collections()

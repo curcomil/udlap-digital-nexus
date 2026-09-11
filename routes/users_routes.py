@@ -10,6 +10,7 @@ from controllers import (
     reset_credentials_controller,
     get_coordinators_controller,
 )
+from utils import get_debug_docs
 from bson import ObjectId
 
 users_bp = Blueprint("users", __name__)
@@ -19,18 +20,7 @@ CORS(users_bp, origins="*")
 @users_bp.route("/", methods=["GET"])
 def users_root():
     if os.getenv("ENVIROMENT") == "debug":
-        return {
-            "message": "Users root endpoint.",
-            "note": "Todos los endpoints requieren JWT. Admin: la mayoría. Digitalizer: /getcoordinators.",
-            "available_endpoints": [
-                {"path": "/getusers", "method": "GET", "auth": "admin"},
-                {"path": "/create", "method": "POST", "auth": "admin"},
-                {"path": "/<user_id>", "method": "PATCH", "auth": "admin"},
-                {"path": "/<user_id>", "method": "DELETE", "auth": "admin"},
-                {"path": "/reset_credentials/<user_id>", "method": "DELETE", "auth": "admin"},
-                {"path": "/getcoordinators", "method": "GET", "auth": "digitalizer"},
-            ],
-        }
+        return get_debug_docs("users")
     return {"message": "Users endpoint."}
 
 
