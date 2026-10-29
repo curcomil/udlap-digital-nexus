@@ -29,7 +29,7 @@ def _api_root(db_connection=None, **_):
             },
             {
                 "path": "/api/xmlibris",
-                "context": "Lectura y edición de carpetas e items de cada colección en la base udlap, y alta de nuevas colecciones.",
+                "context": "Lectura y edición de subcolecciones e items de cada colección en la base 'xmlibris' (colecciones 'colecciones' e 'items'), y alta de nuevas colecciones.",
             },
         ],
     }
@@ -103,48 +103,59 @@ def _users_root(**_):
 def _xmlibris_root(**_):
     return {
         "message": "XMLibris root endpoint.",
-        "context": "Gestión de colecciones XMLibris. El <coleccion> de la URL es el nombre de una colección dentro de la base fija udlap; los documentos se distinguen por el campo type (carpeta | item | collection).",
+        "context": "Gestión de colecciones XMLibris sobre la base 'xmlibris'. El <coleccion> de la URL es el setspec_collection de la colección; los items viven en la colección 'items' y las carpetas son las subcolecciones embebidas en el registro 'colecciones'.",
         "available_endpoints": [
+            {
+                "path": "/api/xmlibris/getallcollections",
+                "method": "GET",
+                "context": "Sin body. Devuelve todas las colecciones del registro (coleccion 'colecciones') omitiendo los campos schema y exportacion_fija, que solo viajan en el detalle. 404 con data:[] si no hay ninguna.",
+            },
+            {
+                "path": "/api/xmlibris/getcollection/<internal_id>",
+                "method": "GET",
+                "context": "internal_id es el de coleccion.internal_id. Devuelve el documento COMPLETO de esa colección, incluidos schema y exportacion_fija. 404 'Colección no encontrada' si no existe.",
+            },
             {
                 "path": "/api/xmlibris/<coleccion>",
                 "method": "GET",
                 "context": "Sub-índice de una colección. En debug devuelve la lista de operaciones disponibles para esa colección.",
             },
             {
-                "path": "/api/xmlibris/<coleccion>/carpetas",
+                "path": "/api/xmlibris/<coleccion>/subcolecciones",
                 "method": "GET",
-                "context": "Devuelve un array con todos los documentos type=carpeta de la colección (find({'type': 'carpeta'})). 404 con data:[] si no hay.",
+                "context": "Sin body. Devuelve el arreglo subcolecciones embebido en el registro de la colección (name_subcollection, setspec_subcollection, internal_id, app, status). 404 'Colección no encontrada' si la colección no existe; 200 con data:[] si no hay subcolecciones. Tope de 100 resultados por consulta: el bloque `pagination` (limit, returned, has_more) avisa si quedaron más.",
             },
             {
-                "path": "/api/xmlibris/<coleccion>/carpeta/<carpeta_id>",
-                "method": "GET",
-                "context": "carpeta_id ObjectId válido (400 si no). Devuelve el documento de carpeta con ese _id y type=carpeta, o 404 'Carpeta no encontrada'.",
-            },
-            {
-                "path": "/api/xmlibris/<coleccion>/carpeta/<carpeta_id>",
+                "path": "/api/xmlibris/<coleccion>/subcoleccion/<internal_id>",
                 "method": "PUT",
-                "context": "carpeta_id ObjectId válido y body JSON no vacío (400). Aplica el body completo como $set sobre la carpeta y devuelve el documento actualizado; 404 si no existe o sin cambios.",
+                "context": "Body JSON con rutas con punto, ej. {\"name_subcollection\": \"...\", \"app.notas\": \"...\"}. internal_id es el de la subcolección (19 dígitos). Actualiza la subcolección EMBEBIDA en el registro 'colecciones' con un solo find_one_and_update y arrayFilters sobre subcolecciones.$[sub]. Campos permitidos: name_subcollection, status, app.notas, app.miniatura y app.referencia_externa; internal_id y setspec_subcollection NO son editables (son la identidad y el vínculo desde parents.subcoleccion de los items). Cualquier otro campo devuelve 400 'Campos no editables: ...'. Devuelve la subcolección actualizada; 404 'Subcolección no encontrada'. REQUIERE JWT con role admin, coordinator o digitizer (403 si no).",
             },
             {
-                "path": "/api/xmlibris/<coleccion>/items/<carpeta_id>",
+                "path": "/api/xmlibris/<coleccion>/items/<subcoleccion>",
                 "method": "GET",
-                "context": "carpeta_id se usa como string (sin cast a ObjectId). Devuelve todos los type=item cuyo papiro_data.father_id coincide; 404 con data:[] si no hay.",
+                "context": "Sin body. Devuelve los items de la subcolección desde la colección 'items', filtrando por parents.coleccion.setspec_collection + parents.subcoleccion.setspec_subcollection (el slug). Cada item es el documento nuevo completo (internal_id, is_published, parents, metadata, app, content). metadata.portada se reescribe como la ruta <coleccion>/<subcoleccion>/<internal_id>/<archivo>, SIN el prefijo getfile (el cliente la usa contra /api/xmlibris/getfile/); si el item no trae portada se deja tal cual. 200 con data:[] si la subcolección no tiene items. Tope de 100 resultados por consulta: el bloque `pagination` (limit, returned, has_more) avisa si quedaron más.",
             },
             {
-                "path": "/api/xmlibris/<coleccion>/item/<item_id>",
+                "path": "/api/xmlibris/getfile/<coleccion>/<subcoleccion>/<internal_id>/<archivo>",
+                "method": "GET",
+                "context": "Sin body. Entrega el binario (imagen o PDF) desde FILES_ROOT/<coleccion>/<subcoleccion>/<internal_id>/<archivo>. 404 'Archivo no encontrado' si no existe; 400 'Ruta inválida' si algún componente intenta salir de la raíz.",
+            },
+            {
+                "path": "/api/xmlibris/<coleccion>/item/<internal_id>",
                 "method": "PUT",
-                "context": "item_id ObjectId válido y body JSON no vacío (400). Aplica el body completo como $set sobre el item (type=item) y devuelve el documento actualizado; 404 si no existe o sin cambios.",
+                "context": "Body JSON con rutas con punto, ej. {\"metadata.titulo\": \"...\", \"app.notas\": \"...\", \"is_published\": true}. internal_id es el del item (19 dígitos, sin validación de formato). Aplica $set sobre el documento de 'items' filtrando por internal_id + parents.coleccion.setspec_collection y devuelve el documento actualizado con metadata.portada ya reescrita. Solo acepta rutas de un nivel bajo metadata. o app., más is_published; cualquier otra devuelve 400 'Campos no editables: ...'. 404 'Item no encontrado'. REQUIERE JWT con role admin, coordinator o digitizer (403 si no).",
             },
             {
-                "path": "/api/xmlibris/<coleccion>/findbyfilter",
+                "path": "/api/xmlibris/newitem",
                 "method": "POST",
-                "context": "Body JSON {type, filtro, query}. Mapea filtro a un campo real de Mongo (titulo->dc_metadata.titulo, autor->dc_metadata.autor, tipologia->papiro_data.tipo_de_objeto, keywords->papiro_data.keywords, ...), hace match case-insensitive por regex sobre query y adjunta la carpeta padre vía $lookup self-join. Con filtro=subcoleccion_normalizada normaliza query (minúsculas, sin acentos, no-[a-z0-9]->_). Devuelve los items con carpeta_padre; 404 'Sin coincidencias' si nada.",
+                "auth": "admin | coordinator | digitizer",
+                "context": "Alta de un item nuevo en estado pending. Acepta JSON o multipart/form-data. En multipart el campo 'data' lleva el JSON del item y los archivos van en 'files' (o 'file'). El JSON requiere parents (solo se usa parents.coleccion.internal_id para resolver la colección; los datos de parents se reconstruyen desde el registro real), origen (acervo|tesis), metadata validada contra el schema de la colección, libro (bool) y estructura (secciones/cantidades del libro). El controller deja los binarios en FILES_ROOT/pendiente/<coleccion>/<subcoleccion>/<internal_id>/ y guarda content con la forma plana o paginada.",
             },
             {
                 "path": "/api/xmlibris/newcollection",
                 "method": "POST",
                 "auth": "coordinator",
-                "context": "Requiere JWT role=coordinator. Body JSON: extrae user y new_collection_name (default 'general') y el resto es el payload. Hace insert_one del payload en la colección indicada dentro de udlap. Traduce fallos de validación de esquema a 'Faltan campos requeridos'. 201 al crear. (Nota: el controller arma un sobre de workflow con historial pero hoy inserta el payload crudo.)",
+                "context": "NO SE VA A CONSTRUIR (decisión tomada). El endpoint sigue wired y roto: inserta el payload crudo en xmlibris.<new_collection_name> y descarta el sobre de aprobación que arma el controller (status, history, reviewedByCoordinator...). Requiere JWT role=coordinator. Queda pendiente decidir si se elimina por completo (ruta + controller + método de db + esta entrada + la llamada new_collection() del frontend) o se deja como está.",
             },
         ],
     }
@@ -153,37 +164,27 @@ def _xmlibris_root(**_):
 def _coleccion_root(coleccion="<coleccion>", **_):
     return {
         "message": f"{coleccion} root endpoint.",
-        "context": f"Operaciones sobre la colección '{coleccion}' (colección de Mongo dentro de la base 'udlap'). Los documentos se distinguen por el campo type: carpeta (agrupador) e item (registro).",
+        "context": f"Operaciones sobre la colección '{coleccion}' en la base 'xmlibris': las subcolecciones viven embebidas en el registro 'colecciones' y los items en la colección 'items' (vinculados por parents.coleccion.setspec_collection y parents.subcoleccion.setspec_subcollection).",
         "available_endpoints": [
             {
-                "path": f"/api/xmlibris/{coleccion}/carpetas",
+                "path": f"/api/xmlibris/{coleccion}/subcolecciones",
                 "method": "GET",
-                "context": "Devuelve un array con todos los documentos type=carpeta de la colección (find({'type': 'carpeta'})). 404 con data:[] si no hay.",
+                "context": "Sin body. Devuelve el arreglo subcolecciones embebido en el registro de la colección (name_subcollection, setspec_subcollection, internal_id, app, status). 404 'Colección no encontrada' si la colección no existe; 200 con data:[] si no hay subcolecciones. Tope de 100 resultados por consulta: el bloque `pagination` (limit, returned, has_more) avisa si quedaron más.",
             },
             {
-                "path": f"/api/xmlibris/{coleccion}/carpeta/<carpeta_id>",
-                "method": "GET",
-                "context": "carpeta_id ObjectId válido (400 si no). Devuelve el documento de carpeta con ese _id y type=carpeta, o 404 'Carpeta no encontrada'.",
-            },
-            {
-                "path": f"/api/xmlibris/{coleccion}/carpeta/<carpeta_id>",
+                "path": f"/api/xmlibris/{coleccion}/subcoleccion/<internal_id>",
                 "method": "PUT",
-                "context": "carpeta_id ObjectId válido y body JSON no vacío (400). Aplica el body completo como $set sobre la carpeta y devuelve el documento actualizado; 404 si no existe o sin cambios.",
+                "context": "Body JSON con rutas con punto, ej. {\"name_subcollection\": \"...\", \"app.notas\": \"...\"}. internal_id es el de la subcolección (19 dígitos). Actualiza la subcolección EMBEBIDA en el registro 'colecciones' con un solo find_one_and_update y arrayFilters sobre subcolecciones.$[sub]. Campos permitidos: name_subcollection, status, app.notas, app.miniatura y app.referencia_externa; internal_id y setspec_subcollection NO son editables (son la identidad y el vínculo desde parents.subcoleccion de los items). Cualquier otro campo devuelve 400 'Campos no editables: ...'. Devuelve la subcolección actualizada; 404 'Subcolección no encontrada'. REQUIERE JWT con role admin, coordinator o digitizer (403 si no).",
             },
             {
-                "path": f"/api/xmlibris/{coleccion}/items/<carpeta_id>",
+                "path": f"/api/xmlibris/{coleccion}/items/<subcoleccion>",
                 "method": "GET",
-                "context": "carpeta_id se usa como string (sin cast a ObjectId). Devuelve todos los type=item cuyo papiro_data.father_id coincide; 404 con data:[] si no hay.",
+                "context": "Sin body. Devuelve los items de la subcolección desde la colección 'items', filtrando por parents.coleccion.setspec_collection + parents.subcoleccion.setspec_subcollection (el slug). Cada item es el documento nuevo completo (internal_id, is_published, parents, metadata, app, content). metadata.portada se reescribe como la ruta <coleccion>/<subcoleccion>/<internal_id>/<archivo>, SIN el prefijo getfile (el cliente la usa contra /api/xmlibris/getfile/); si el item no trae portada se deja tal cual. 200 con data:[] si la subcolección no tiene items. Tope de 100 resultados por consulta: el bloque `pagination` (limit, returned, has_more) avisa si quedaron más.",
             },
             {
-                "path": f"/api/xmlibris/{coleccion}/item/<item_id>",
+                "path": f"/api/xmlibris/{coleccion}/item/<internal_id>",
                 "method": "PUT",
-                "context": "item_id ObjectId válido y body JSON no vacío (400). Aplica el body completo como $set sobre el item (type=item) y devuelve el documento actualizado; 404 si no existe o sin cambios.",
-            },
-            {
-                "path": f"/api/xmlibris/{coleccion}/findbyfilter",
-                "method": "POST",
-                "context": "Body JSON {type, filtro, query}. Mapea filtro a un campo real de Mongo (titulo->dc_metadata.titulo, autor->dc_metadata.autor, tipologia->papiro_data.tipo_de_objeto, keywords->papiro_data.keywords, ...), hace match case-insensitive por regex sobre query y adjunta la carpeta padre vía $lookup self-join. Con filtro=subcoleccion_normalizada normaliza query (minúsculas, sin acentos, no-[a-z0-9]->_). Devuelve los items con carpeta_padre; 404 'Sin coincidencias' si nada.",
+                "context": "Body JSON con rutas con punto, ej. {\"metadata.titulo\": \"...\", \"app.notas\": \"...\", \"is_published\": true}. internal_id es el del item (19 dígitos, sin validación de formato). Aplica $set sobre el documento de 'items' filtrando por internal_id + parents.coleccion.setspec_collection y devuelve el documento actualizado con metadata.portada ya reescrita. Solo acepta rutas de un nivel bajo metadata. o app., más is_published; cualquier otra devuelve 400 'Campos no editables: ...'. 404 'Item no encontrado'. REQUIERE JWT con role admin, coordinator o digitizer (403 si no).",
             },
         ],
     }

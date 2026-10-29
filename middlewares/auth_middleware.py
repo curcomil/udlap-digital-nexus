@@ -37,3 +37,19 @@ def require_digitalizer(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def require_roles(*roles):
+
+    def decorator(f):
+        @wraps(f)
+        @jwt_required()  # verifica firma y expiración automáticamente
+        def decorated(*args, **kwargs):
+            claims = get_jwt()  # obtiene el payload completo
+            if claims.get("role") not in roles:
+                return jsonify({"success": False, "message": "Acceso restringido"}), 403
+            return f(*args, **kwargs)
+
+        return decorated
+
+    return decorator

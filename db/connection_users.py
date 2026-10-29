@@ -8,11 +8,21 @@ import os
 load_dotenv()
 uri = os.getenv("MONGODB_URI")
 
+# Cliente único por proceso (ver connection_xmlibris.py).
+_cliente = None
+
+
+def _cliente_mongo():
+    global _cliente
+    if _cliente is None:
+        # Comentar server_api si se usa MongoLocal
+        _cliente = MongoClient(uri, server_api=ServerApi("1"))
+    return _cliente
+
 
 class MongoDBConnection_Users:
     def __init__(self, db_name: str, collection_name: str):
-        # Comentar server_api si se usa MongoLocal
-        self.client = MongoClient(uri, server_api=ServerApi("1"))
+        self.client = _cliente_mongo()
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
 
